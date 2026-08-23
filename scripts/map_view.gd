@@ -16,9 +16,13 @@ func _input(event: InputEvent) -> void:
 	if not event.pressed or event.button_index != MOUSE_BUTTON_LEFT: return
 	for i in nodes.size():
 		var p := node_position(i)
-		if event.position.distance_to(p) <= 28.0:
+		if event.position.distance_to(p) <= 32.0:
 			selected = i
-			node_selected.emit(str(nodes[i].type))
+			var node_type := str(nodes[i].type)
+			node_selected.emit(node_type)
+			var controller := get_parent()
+			if controller != null and controller.has_method("select_node"):
+				controller.select_node(node_type)
 			queue_redraw()
 			return
 
