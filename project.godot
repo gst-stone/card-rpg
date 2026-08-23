@@ -15,11 +15,7 @@ renderer/rendering_method.mobile="gl_compatibility"
 textures/default_filters/use_nearest_mipmap_filter=false
 
 [input]
-move_left={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":65),Object(InputEventKey,"physical_keycode":4194311)]}
-move_right={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":68),Object(InputEventKey,"physical_keycode":4194313)]}
-move_up={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":87),Object(InputEventKey,"physical_keycode":4194320)]}
-move_down={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":83),Object(InputEventKey,"physical_keycode":4194322)]}
-attack={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":32)]}
 map={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":77)]}
 back={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":66)]}
 end_turn={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":69)]}
+new_run={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":82)]}
