@@ -1,3 +1,4 @@
+class_name RelicCatalog
 extends RefCounted
 
 const RELICS := {
