@@ -16,8 +16,8 @@ const CARDS := {
 	"Ice Lance+": {"cost": 2, "damage": 40, "heal": 0, "block": 0, "draw": 0, "type": "attack", "description": "Deal 40 damage."},
 	"Blood Pact": {"cost": 1, "damage": 18, "heal": 8, "block": 0, "draw": 0, "type": "skill", "description": "Deal 18 damage and heal 8 HP."},
 	"Blood Pact+": {"cost": 1, "damage": 24, "heal": 12, "block": 0, "draw": 0, "type": "skill", "description": "Deal 24 damage and heal 12 HP."},
-	"Focus": {"cost": 1, "damage": 0, "heal": 0, "block": 5, "draw": 2, "type": "skill", "description": "Gain 5 block and draw 2 cards."},
-	"Focus+": {"cost": 1, "damage": 0, "heal": 0, "block": 8, "draw": 2, "type": "skill", "description": "Gain 8 block and draw 2 cards."}
+	"Focus": {"cost": 1, "damage": 0, "heal": 0, "block": 5, "draw": 0, "type": "skill", "description": "Gain 5 block."},
+	"Focus+": {"cost": 1, "damage": 0, "heal": 0, "block": 8, "draw": 0, "type": "skill", "description": "Gain 8 block."}
 }
 
 const upgraded_cards := {
