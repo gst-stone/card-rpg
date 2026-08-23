@@ -2,8 +2,7 @@ class_name MapGenerator
 extends RefCounted
 
 # Generates a seven-floor branching route.
-# Every run has multiple choices while guaranteeing a shop, rest and event
-# somewhere before the boss, so the player can build a meaningful route.
+# The middle path guarantees event, rest, shop and elite opportunities.
 static func generate(floor: int, seed_value: int = 0) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value if seed_value != 0 else Time.get_unix_time_from_system()
@@ -14,7 +13,7 @@ static func generate(floor: int, seed_value: int = 0) -> Array:
 		var count := 3 if row < 6 else 1
 		for col in range(count):
 			var type := _roll_type(rng, row, floor)
-			if col == 1 and row > 0 and row < 6 and rng.randi_range(0, 99) < 28:
+			if row > 0 and row < 6 and col == 1:
 				type = guaranteed[row]
 			nodes.append({
 				"id": "%d-%d" % [row, col],
