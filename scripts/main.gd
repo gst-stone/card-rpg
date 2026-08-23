@@ -9,14 +9,15 @@ var enemy_hp := 60
 var energy := MAX_ENERGY
 var turn := 1
 var game_over := false
+var in_map := false
 var message := "Turn 1 — play a card or press E to end turn"
 
 var deck := [
-	{"name": "Strike", "cost": 1, "damage": 15, "heal": 0, "block": 0},
-	{"name": "Strike", "cost": 1, "damage": 15, "heal": 0, "block": 0},
-	{"name": "Fireball", "cost": 2, "damage": 25, "heal": 0, "block": 0},
-	{"name": "Guard", "cost": 1, "damage": 0, "heal": 10, "block": 0},
-	{"name": "Heavy Blow", "cost": 3, "damage": 40, "heal": 0, "block": 0}
+	{"name": "Strike", "cost": 1, "damage": 15, "heal": 0},
+	{"name": "Strike", "cost": 1, "damage": 15, "heal": 0},
+	{"name": "Fireball", "cost": 2, "damage": 25, "heal": 0},
+	{"name": "Guard", "cost": 1, "damage": 0, "heal": 10},
+	{"name": "Heavy Blow", "cost": 3, "damage": 40, "heal": 0}
 ]
 var draw_pile: Array = []
 var discard_pile: Array = []
@@ -31,10 +32,20 @@ func _process(_delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_M and not game_over:
+			in_map = true
+			message = "Adventure map — choose your next node."
+			queue_redraw()
+			return
+		if event.keycode == KEY_B and in_map:
+			in_map = false
+			message = "Battle — play a card or press E to end turn"
+			queue_redraw()
+			return
 		if event.keycode == KEY_R:
 			reset_battle()
 			return
-		if game_over:
+		if in_map or game_over:
 			return
 		match event.keycode:
 			KEY_1: play_card(0)
@@ -48,6 +59,7 @@ func reset_battle() -> void:
 	energy = MAX_ENERGY
 	turn = 1
 	game_over = false
+	in_map = false
 	discard_pile.clear()
 	hand.clear()
 	draw_pile = deck.duplicate(true)
@@ -68,10 +80,6 @@ func draw_cards(amount: int) -> void:
 func play_card(index: int) -> void:
 	if index < 0 or index >= hand.size():
 		return
-	if energy <= 0:
-		message = "No energy left — press E to end turn."
-		return
-
 	var card: Dictionary = hand[index]
 	var cost: int = card["cost"]
 	if cost > energy:
@@ -90,19 +98,17 @@ func play_card(index: int) -> void:
 	discard_pile.append(hand.pop_at(index))
 	if enemy_hp <= 0:
 		game_over = true
-		message = "Victory! Press R to play again."
+		message = "Victory! Press R to play again, or M for the map."
 
 func end_turn() -> void:
 	if game_over:
 		return
-
 	var enemy_damage := 5 + (turn - 1) * 2
 	player_hp = max(0, player_hp - enemy_damage)
 	if player_hp <= 0:
 		game_over = true
 		message = "Defeat! Enemy dealt %d damage. Press R to restart." % enemy_damage
 		return
-
 	for card in hand:
 		discard_pile.append(card)
 	hand.clear()
@@ -114,24 +120,29 @@ func end_turn() -> void:
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, 960, 540), Color("18202a"))
 	draw_rect(Rect2(40, 30, 880, 480), Color("263342"), true)
-
 	draw_string(ThemeDB.fallback_font, Vector2(65, 70), "CARD RPG", HORIZONTAL_ALIGNMENT_LEFT, -1, 32, Color("f2d27b"))
 	draw_string(ThemeDB.fallback_font, Vector2(65, 100), message, HORIZONTAL_ALIGNMENT_LEFT, 830, 17, Color("d8e0e8"))
+
+	if in_map:
+		_draw_map_hint()
+		return
 
 	draw_circle(Vector2(250, 205), 55, Color("4d8bd6"))
 	draw_string(ThemeDB.fallback_font, Vector2(205, 211), "HERO", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
 	draw_circle(Vector2(710, 205), 55, Color("b94a59"))
 	draw_string(ThemeDB.fallback_font, Vector2(665, 211), "ENEMY", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
-
 	_draw_bar(Vector2(155, 280), player_hp, MAX_HP, "HP %d / %d" % [player_hp, MAX_HP])
 	_draw_bar(Vector2(615, 280), enemy_hp, 60, "HP %d / 60" % enemy_hp)
-
 	draw_string(ThemeDB.fallback_font, Vector2(65, 335), "TURN %d" % turn, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("f2d27b"))
 	draw_string(ThemeDB.fallback_font, Vector2(185, 335), "ENERGY %d / %d" % [energy, MAX_ENERGY], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("f2d27b"))
-	draw_string(ThemeDB.fallback_font, Vector2(390, 335), "1-3: play card    E: end turn    R: restart", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("b8c5d2"))
-
+	draw_string(ThemeDB.fallback_font, Vector2(390, 335), "1-3: card   E: end turn   M: map   R: restart", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("b8c5d2"))
 	for i in range(hand.size()):
 		_draw_card(i, hand[i])
+
+func _draw_map_hint() -> void:
+	draw_string(ThemeDB.fallback_font, Vector2(120, 200), "MAP MODE", HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color("f2d27b"))
+	draw_string(ThemeDB.fallback_font, Vector2(120, 245), "The adventure map is available in scripts/map.gd.", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("d8e0e8"))
+	draw_string(ThemeDB.fallback_font, Vector2(120, 280), "B: return to battle", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("c5d0dc"))
 
 func _draw_bar(pos: Vector2, value: int, maximum: int, label: String) -> void:
 	draw_rect(Rect2(pos, Vector2(190, 18)), Color("111820"), true)
