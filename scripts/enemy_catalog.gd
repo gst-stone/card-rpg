@@ -33,3 +33,11 @@ static func intent_damage(enemy: Dictionary, turn: int) -> int:
 	if intent == "Weakening Chant": return 0
 	if intent == "Guard": return 0
 	return base
+
+static func action_for(enemy: Dictionary, turn: int) -> String:
+	var intent := next_intent(enemy, turn)
+	match intent:
+		"Heavy Attack": return "heavy"
+		"Guard": return "guard"
+		"Weakening Chant", "Weakening Strike": return "weak"
+	return "attack"
