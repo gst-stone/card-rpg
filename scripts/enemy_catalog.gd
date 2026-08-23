@@ -1,3 +1,4 @@
+class_name EnemyCatalog
 extends RefCounted
 
 const ENEMIES := {
@@ -12,4 +13,23 @@ static func create_enemy(floor: int, elite: bool = false) -> Dictionary:
 	var name: String = "Elite Knight" if elite else names[(floor - 1) % names.size()]
 	var base: Dictionary = ENEMIES[name]
 	var scale := max(0, floor - 1)
-	return {"name":name,"max_hp":int(base.hp) + scale * 8,"hp":int(base.hp) + scale * 8,"damage":int(base.damage) + scale * 2,"intent":base.intent}
+	var hp := int(base.hp) + scale * 8
+	var damage := int(base.damage) + scale * 2
+	return {"name":name,"max_hp":hp,"hp":hp,"damage":damage,"intent":base.intent,"turn":1,"phase":1}
+
+static func next_intent(enemy: Dictionary, turn: int) -> String:
+	var name := str(enemy.get("name", "Cultist"))
+	match name:
+		"Cultist": return ["Attack", "Attack", "Weakening Chant"][max(0, turn - 1) % 3]
+		"Wolf": return ["Attack", "Heavy Attack"][max(0, turn - 1) % 2]
+		"Golem": return ["Heavy Attack", "Guard", "Attack"][max(0, turn - 1) % 3]
+		"Elite Knight": return ["Heavy Attack", "Attack", "Weakening Strike"][max(0, turn - 1) % 3]
+	return "Attack"
+
+static func intent_damage(enemy: Dictionary, turn: int) -> int:
+	var base := int(enemy.get("damage", 0))
+	var intent := next_intent(enemy, turn)
+	if intent == "Heavy Attack": return base + 8
+	if intent == "Weakening Chant": return 0
+	if intent == "Guard": return 0
+	return base
