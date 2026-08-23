@@ -9,6 +9,8 @@ var energy := MAX_ENERGY
 var turn := 1
 var game_over := false
 var in_map := false
+var reward_pending := false
+var reward_choices: Array = []
 var message := ""
 var draw_pile: Array = []
 var discard_pile: Array = []
@@ -17,6 +19,7 @@ var card_defs := {"Strike":{"cost":1,"damage":15,"heal":0},"Fireball":{"cost":2,
 
 func _ready() -> void:
 	run = SaveManager.load_run()
+	run.apply_relics()
 	start_battle()
 
 func _process(_delta: float) -> void:
@@ -27,27 +30,38 @@ func _input(event: InputEvent) -> void:
 		match event.keycode:
 			KEY_R: new_run()
 			KEY_M:
-				if not game_over: in_map = true; message = "Map — press B to return."
+				if not game_over and not reward_pending: in_map = true; message = "Map — press B to return."
 			KEY_B:
 				if in_map: in_map = false; message = "Battle — play 1-3 or press E."
-			KEY_1: play_card(0)
-			KEY_2: play_card(1)
-			KEY_3: play_card(2)
+			KEY_1: _handle_primary_input(0)
+			KEY_2: _handle_primary_input(1)
+			KEY_3: _handle_primary_input(2)
 			KEY_E: end_turn()
+
+func _handle_primary_input(index: int) -> void:
+	if reward_pending:
+		claim_reward(index)
+	else:
+		play_card(index)
 
 func new_run() -> void:
 	run = RunData.new()
+	run.apply_relics()
 	SaveManager.save_run(run)
 	start_battle()
 
 func start_battle() -> void:
+	run.apply_relics()
 	enemy_max_hp = 60 + max(0, run.floor - 1) * 10
+	if run.floor % 5 == 0:
+		enemy_max_hp += 40
 	enemy_hp = enemy_max_hp
-	energy = MAX_ENERGY; turn = 1; game_over = false; in_map = false
+	energy = MAX_ENERGY; turn = 1; game_over = false; in_map = false; reward_pending = false
 	draw_pile.clear(); discard_pile.clear(); hand.clear()
 	for card_name in run.deck: draw_pile.append(card_name)
 	draw_pile.shuffle(); draw_cards(HAND_SIZE)
-	message = "Battle — %d gold | play 1-3 or press E." % run.gold
+	var enemy_type := "BOSS" if run.floor % 5 == 0 else "ENEMY"
+	message = "%s — %d gold | play 1-3 or press E." % [enemy_type, run.gold]
 
 func card_data(card_name: String) -> Dictionary:
 	return card_defs.get(card_name, {"cost":1,"damage":5,"heal":0})
@@ -60,27 +74,62 @@ func draw_cards(amount: int) -> void:
 		hand.append(draw_pile.pop_back())
 
 func play_card(index: int) -> void:
-	if in_map or game_over or index >= hand.size(): return
+	if in_map or game_over or reward_pending or index >= hand.size(): return
 	var card_name: String = hand[index]
 	var data := card_data(card_name)
 	if int(data.cost) > energy: message = "%s needs %d energy." % [card_name, data.cost]; return
 	energy -= int(data.cost)
-	enemy_hp = max(0, enemy_hp - int(data.damage))
+	var damage := int(data.damage) + RelicCatalog.damage_bonus(run.relics)
+	enemy_hp = max(0, enemy_hp - damage)
 	run.heal(int(data.heal))
 	discard_pile.append(hand.pop_at(index))
-	message = "%s played." % card_name
+	message = "%s played for %d." % [card_name, damage] if damage > 0 else "%s played." % card_name
 	if enemy_hp <= 0: victory()
 
 func victory() -> void:
 	var reward := 30 + run.floor * 10
-	run.add_gold(reward); run.floor += 1; run.heal(12)
-	SaveManager.save_run(run)
+	if run.relics.has("Lucky Coin"):
+		reward = int(round(reward * 1.2))
+	run.add_gold(reward)
+	run.floor += 1
+	run.heal(12)
+	run.apply_relics()
+	reward_choices = [
+		{"type":"card", "value":"Heavy Blow", "text":"Add Heavy Blow"},
+		{"type":"relic", "value":_random_relic(), "text":"Take a relic"},
+		{"type":"gold", "value":50, "text":"Take 50 gold"}
+	]
+	reward_pending = true
 	game_over = true
-	message = "Victory! +%d gold, +12 HP. Press M or R." % reward
+	SaveManager.save_run(run)
+	message = "Victory! +%d gold, +12 HP. Choose a reward with 1-3." % reward
+
+func _random_relic() -> String:
+	var available: Array = []
+	for relic_name in RelicCatalog.RELICS.keys():
+		if not run.relics.has(relic_name): available.append(relic_name)
+	if available.is_empty(): return "Lucky Coin"
+	return available[randi() % available.size()]
+
+func claim_reward(index: int) -> void:
+	if not reward_pending or index < 0 or index >= reward_choices.size(): return
+	var choice: Dictionary = reward_choices[index]
+	match choice.type:
+		"card":
+			run.add_card(str(choice.value)); message = "Reward: %s added to deck." % choice.value
+		"relic":
+			run.add_relic(str(choice.value)); run.apply_relics(); message = "Relic acquired: %s." % choice.value
+		"gold":
+			run.add_gold(int(choice.value)); message = "Reward: +%d gold." % int(choice.value)
+	reward_pending = false
+	game_over = false
+	SaveManager.save_run(run)
+	start_battle()
 
 func end_turn() -> void:
-	if in_map or game_over: return
+	if in_map or game_over or reward_pending: return
 	var damage := 5 + (turn - 1) * 2 + max(0, run.floor - 1)
+	if run.floor % 5 == 0: damage += 4
 	run.take_damage(damage)
 	if run.player_hp <= 0:
 		game_over = true; SaveManager.save_run(run); message = "Defeat. Press R to start a new run."; return
@@ -96,13 +145,24 @@ func _draw() -> void:
 	draw_string(ThemeDB.fallback_font, Vector2(700,70), "GOLD %d" % run.gold, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("f2d27b"))
 	draw_string(ThemeDB.fallback_font, Vector2(700,100), "FLOOR %d" % run.floor, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("c5d0dc"))
 	if in_map: _draw_map(); return
+	if reward_pending: _draw_reward(); return
 	draw_circle(Vector2(250,200),55,Color("4d8bd6")); draw_string(ThemeDB.fallback_font,Vector2(205,206),"HERO",HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color.WHITE)
-	draw_circle(Vector2(710,200),55,Color("b94a59")); draw_string(ThemeDB.fallback_font,Vector2(665,206),"ENEMY",HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color.WHITE)
+	draw_circle(Vector2(710,200),55,Color("b94a59")); draw_string(ThemeDB.fallback_font,Vector2(665,206),"BOSS" if run.floor % 5 == 0 else "ENEMY",HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color.WHITE)
 	_draw_bar(Vector2(145,275),run.player_hp,run.max_hp,"HP %d / %d" % [run.player_hp,run.max_hp])
 	_draw_bar(Vector2(615,275),enemy_hp,enemy_max_hp,"HP %d / %d" % [enemy_hp,enemy_max_hp])
-	draw_string(ThemeDB.fallback_font,Vector2(65,330),"TURN %d   ENERGY %d/%d" % [turn,energy,MAX_ENERGY],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("f2d27b"))
+	draw_string(ThemeDB.fallback_font,Vector2(65,330),"TURN %d   ENERGY %d/%d   RELICS %d" % [turn,energy,MAX_ENERGY,run.relics.size()],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("f2d27b"))
 	for i in hand.size(): _draw_card(i,hand[i])
 	draw_string(ThemeDB.fallback_font,Vector2(65,500),"1-3 Card   E End Turn   M Map   R New Run",HORIZONTAL_ALIGNMENT_LEFT,-1,15,Color("b8c5d2"))
+
+func _draw_reward() -> void:
+	draw_string(ThemeDB.fallback_font,Vector2(110,175),"VICTORY REWARD",HORIZONTAL_ALIGNMENT_LEFT,-1,32,Color("f2d27b"))
+	draw_string(ThemeDB.fallback_font,Vector2(110,215),"Choose one reward",HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("d8e0e8"))
+	for i in reward_choices.size():
+		var rect := Rect2(90 + i * 280, 255, 250, 130)
+		draw_rect(rect,Color("394b5f"),true); draw_rect(rect,Color("7f95aa"),false,2.0)
+		draw_string(ThemeDB.fallback_font,rect.position+Vector2(15,32),"%d  %s" % [i+1,reward_choices[i].text],HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color.WHITE)
+		draw_string(ThemeDB.fallback_font,rect.position+Vector2(15,70),str(reward_choices[i].value),HORIZONTAL_ALIGNMENT_LEFT,-1,17,Color("f2d27b"))
+	draw_string(ThemeDB.fallback_font,Vector2(110,450),"1 / 2 / 3 to choose • R starts a new run",HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color("b8c5d2"))
 
 func _draw_map() -> void:
 	draw_string(ThemeDB.fallback_font,Vector2(110,200),"ADVENTURE MAP",HORIZONTAL_ALIGNMENT_LEFT,-1,32,Color("f2d27b"))
