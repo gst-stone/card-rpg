@@ -6,7 +6,7 @@ static func apply_card(card: Dictionary, enemy: Dictionary, player: RunData, rel
 	var block := int(card.get("block", 0)) + RelicCatalog.block_bonus(relics)
 	var heal := int(card.get("heal", 0))
 	if damage > 0: heal += RelicCatalog.lifesteal(relics)
-	return {"damage": damage, "block": block, "heal": heal, "energy": energy - int(card.get("cost", 0))}
+	return {"damage": damage, "block": block, "heal": heal, "draw": int(card.get("draw", 0)), "energy": energy - int(card.get("cost", 0))}
 
 static func enemy_phase_damage(base_damage: int, status: StatusEffects) -> int:
 	return status.reduce_damage(base_damage)
