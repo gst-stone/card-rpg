@@ -6,12 +6,16 @@ const SHOP := 2
 const EVENT := 3
 const REST := 4
 const BOSS := 5
-const VICTORY := 6
-const DEFEAT := 7
+const REWARD := 6
+const VICTORY := 7
+const DEFEAT := 8
 
 var state := MAP
 var run: RunData
 var message := "Choose your next node."
+var map_rows: Array = []
+var map_seed := 0
+var current_enemy: Dictionary = {}
 var enemy_hp := 60
 var enemy_max_hp := 60
 var energy := 3
@@ -19,56 +23,54 @@ var turn := 1
 var hand: Array = []
 var discard: Array = []
 var draw_pile: Array = []
+var reward_choices: Array = []
+var reward_gold := 0
 var shop_offers := [{"name":"Fireball","price":60},{"name":"Heavy Blow","price":80},{"name":"Heal","price":40}]
 var event_done := false
 var rest_done := false
 var boss_hp := 180
 var boss_max_hp := 180
 var boss_defeated := false
-var card_defs := {"Strike":{"cost":1,"damage":15,"heal":0},"Fireball":{"cost":2,"damage":25,"heal":0},"Guard":{"cost":1,"damage":0,"heal":10},"Heavy Blow":{"cost":3,"damage":40,"heal":0}}
 
 func _ready() -> void:
 	run = SaveManager.load_run()
-	match run.current_node:
-		"victory": state = VICTORY
-		"defeat": state = DEFEAT
-		_: state = MAP
-	queue_redraw()
-
-func _process(_delta: float) -> void:
+	if run.current_node == "victory": state = VICTORY
+	elif run.current_node == "defeat": state = DEFEAT
+	else:
+		map_seed = Time.get_unix_time_from_system()
+		map_rows = MapGenerator.generate(run.floor, map_seed)
+		state = MAP
 	queue_redraw()
 
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo): return
 	var key := event.keycode
-	if key == KEY_R:
-		new_run()
-		return
+	if key == KEY_R: new_run(); return
 	match state:
 		MAP:
-			if key == KEY_1: select_node("battle")
-			elif key == KEY_2: select_node("shop")
-			elif key == KEY_3: select_node("event")
-			elif key == KEY_4: select_node("rest")
-			elif key == KEY_5: select_node("boss")
+			if key >= KEY_1 and key <= KEY_5: select_node_by_key(key - KEY_1)
 		BATTLE:
 			if key == KEY_1: play_card(0)
 			elif key == KEY_2: play_card(1)
 			elif key == KEY_3: play_card(2)
 			elif key == KEY_E: end_turn()
-			elif key == KEY_B: finish_node(true)
+		REWARD:
+			if key == KEY_1: choose_reward(0)
+			elif key == KEY_2: choose_reward(1)
+			elif key == KEY_3: choose_reward(2)
+			elif key == KEY_B: skip_reward()
 		SHOP:
 			if key == KEY_1: buy(0)
 			elif key == KEY_2: buy(1)
 			elif key == KEY_3: buy(2)
-			elif key == KEY_B: finish_node(true)
+			elif key == KEY_B: finish_node()
 		EVENT:
 			if not event_done and key == KEY_1: event_choice(1)
 			elif not event_done and key == KEY_2: event_choice(2)
-			elif event_done and key == KEY_B: finish_node(true)
+			elif event_done and key == KEY_B: finish_node()
 		REST:
 			if not rest_done and key == KEY_1: rest()
-			elif key == KEY_B: finish_node(true)
+			elif key == KEY_B: finish_node()
 		BOSS:
 			if key == KEY_1: boss_play(0)
 			elif key == KEY_2: boss_play(1)
@@ -78,227 +80,167 @@ func _input(event: InputEvent) -> void:
 
 func new_run() -> void:
 	run = RunData.new()
+	map_seed = Time.get_unix_time_from_system()
+	map_rows = MapGenerator.generate(run.floor, map_seed)
 	SaveManager.save_run(run)
 	state = MAP
 	message = "New run started."
+
+func select_node_by_key(index: int) -> void:
+	var row := min(run.floor - 1, map_rows.size() - 1)
+	if row < 0: row = 0
+	var nodes: Array = map_rows[row]
+	var node: Dictionary = nodes[index % nodes.size()]
+	select_node(str(node.type))
 
 func select_node(type: String) -> void:
 	run.current_node = type
 	SaveManager.save_run(run)
 	match type:
-		"battle": start_battle()
+		"battle": start_battle(false)
+		"elite": start_battle(true)
 		"shop": state = SHOP; message = "Choose an item."
 		"event": state = EVENT; event_done = false; message = "A mysterious shrine awaits."
 		"rest": state = REST; rest_done = false; message = "Take a rest."
 		"boss": start_boss()
 
-func start_battle() -> void:
+func start_battle(elite: bool) -> void:
 	state = BATTLE
-	enemy_max_hp = 60 + max(0, run.floor - 1) * 10
+	current_enemy = EnemyCatalog.create_enemy(run.floor, elite)
+	enemy_max_hp = int(current_enemy.max_hp)
 	enemy_hp = enemy_max_hp
-	energy = 3
-	turn = 1
-	hand.clear()
-	discard.clear()
-	draw_pile = run.deck.duplicate()
-	draw_pile.shuffle()
-	draw_cards(3)
-	message = "Battle started."
+	energy = 3; turn = 1; hand.clear(); discard.clear(); draw_pile = run.deck.duplicate(); draw_pile.shuffle(); draw_cards(3)
+	message = "%s — %s" % [current_enemy.name, current_enemy.intent]
 
 func card_data(name: String) -> Dictionary:
-	return card_defs.get(name, {"cost":1,"damage":5,"heal":0})
+	return CardCatalog.get_card(name)
 
 func draw_cards(n: int) -> void:
 	for _i in n:
 		if draw_pile.is_empty():
-			draw_pile = discard.duplicate()
-			discard.clear()
-			draw_pile.shuffle()
+			draw_pile = discard.duplicate(); discard.clear(); draw_pile.shuffle()
 		if draw_pile.is_empty(): return
 		hand.append(draw_pile.pop_back())
 
 func play_card(index: int) -> void:
 	if index >= hand.size(): return
-	var name: String = hand[index]
-	var d := card_data(name)
-	if int(d.cost) > energy:
-		message = "Not enough energy."
-		return
+	var d := card_data(hand[index])
+	if int(d.cost) > energy: message = "Not enough energy."; return
 	energy -= int(d.cost)
-	enemy_hp = max(0, enemy_hp - int(d.damage))
+	enemy_hp = max(0, enemy_hp - int(d.damage) - RelicCatalog.damage_bonus(run.relics))
 	run.heal(int(d.heal))
 	discard.append(hand.pop_at(index))
 	if enemy_hp <= 0: battle_victory()
 
 func end_turn() -> void:
-	if state != BATTLE: return
-	var damage := 5 + (turn - 1) * 2 + max(0, run.floor - 1)
+	var damage := int(current_enemy.damage)
 	run.take_damage(damage)
-	if run.player_hp <= 0:
-		lose_run()
-		return
+	if run.player_hp <= 0: lose_run(); return
 	for c in hand: discard.append(c)
-	hand.clear()
-	turn += 1
-	energy = 3
-	draw_cards(3)
+	hand.clear(); turn += 1; energy = 3; draw_cards(3)
+	message = "%s attacks for %d." % [current_enemy.name, damage]
 	SaveManager.save_run(run)
-	message = "Enemy hits for %d." % damage
 
 func battle_victory() -> void:
-	run.add_gold(30 + run.floor * 10)
+	run.add_gold(RewardGenerator.gold(run.floor, current_enemy.name == "Elite Knight"))
 	run.heal(12)
-	run.floor += 1
+	reward_choices = RewardGenerator.card_choices(run.floor)
+	reward_gold = RewardGenerator.gold(run.floor, current_enemy.name == "Elite Knight")
+	state = REWARD
+	message = "Victory! Choose one card."
 	SaveManager.save_run(run)
-	state = MAP
-	run.current_node = "map"
-	message = "Victory! Choose your next node."
+
+func choose_reward(index: int) -> void:
+	if index >= reward_choices.size(): return
+	run.add_card(str(reward_choices[index]))
+	run.floor += 1
+	finish_node()
+
+func skip_reward() -> void:
+	run.floor += 1
+	finish_node()
 
 func buy(index: int) -> void:
 	var offer = shop_offers[index]
-	if not run.spend_gold(int(offer.price)):
-		message = "Not enough gold."
-		return
+	if not run.spend_gold(int(offer.price)): message = "Not enough gold."; return
 	if offer.name == "Heal": run.heal(25)
 	else: run.add_card(offer.name)
-	SaveManager.save_run(run)
-	message = "Purchased %s." % offer.name
+	SaveManager.save_run(run); message = "Purchased %s." % offer.name
 
 func event_choice(option: int) -> void:
-	if option == 1:
-		run.heal(20)
-		message = "The shrine heals 20 HP."
-	else:
-		run.take_damage(8)
-		run.add_gold(60)
-		message = "You lose 8 HP and gain 60 gold."
-	event_done = true
-	SaveManager.save_run(run)
+	if option == 1: run.heal(20); message = "The shrine heals 20 HP."
+	else: run.take_damage(8); run.add_gold(60); message = "You lose 8 HP and gain 60 gold."
+	event_done = true; SaveManager.save_run(run)
 
 func rest() -> void:
 	if rest_done: return
-	run.heal(30)
-	rest_done = true
-	SaveManager.save_run(run)
-	message = "Restored 30 HP."
+	run.heal(30); rest_done = true; SaveManager.save_run(run); message = "Restored 30 HP."
 
 func start_boss() -> void:
-	state = BOSS
-	boss_hp = 180
-	boss_max_hp = 180
-	boss_defeated = false
-	energy = 3
-	hand = run.deck.duplicate()
-	hand.shuffle()
-	hand = hand.slice(0, min(3, hand.size()))
-	message = "The Guardian appears."
+	state = BOSS; boss_hp = 180 + run.floor * 10; boss_max_hp = boss_hp; boss_defeated = false; energy = 3; hand = run.deck.duplicate(); hand.shuffle(); hand = hand.slice(0,min(3,hand.size())); message = "The Guardian appears."
 
 func boss_play(index: int) -> void:
 	if boss_defeated or index >= hand.size(): return
-	var name: String = hand[index]
-	var d := card_data(name)
-	if int(d.cost) > energy:
-		message = "Not enough energy."
-		return
-	energy -= int(d.cost)
-	boss_hp = max(0, boss_hp - int(d.damage))
-	run.heal(int(d.heal))
-	hand.remove_at(index)
+	var d := card_data(hand[index])
+	if int(d.cost) > energy: message = "Not enough energy."; return
+	energy -= int(d.cost); boss_hp = max(0,boss_hp-int(d.damage)-RelicCatalog.damage_bonus(run.relics)); run.heal(int(d.heal)); hand.remove_at(index)
 	if boss_hp <= 0:
-		boss_defeated = true
-		run.add_gold(150)
-		run.heal(20)
-		run.relics.append("Guardian Core")
-		run.current_node = "victory"
-		SaveManager.save_run(run)
-		message = "Guardian defeated! Press B."
+		boss_defeated = true; run.add_gold(150); run.heal(20); run.add_relic("Guardian Core"); run.current_node="victory"; SaveManager.save_run(run); message="Guardian defeated! Press B."
 
 func boss_turn() -> void:
 	if boss_defeated: return
-	run.take_damage(15)
-	energy = 3
-	hand = run.deck.duplicate()
-	hand.shuffle()
-	hand = hand.slice(0, min(3, hand.size()))
-	if run.player_hp <= 0:
-		lose_run()
-		return
-	SaveManager.save_run(run)
-	message = "Guardian attacks for 15."
+	run.take_damage(15 + run.floor)
+	energy=3; hand=run.deck.duplicate(); hand.shuffle(); hand=hand.slice(0,min(3,hand.size()))
+	if run.player_hp<=0: lose_run(); return
+	SaveManager.save_run(run); message="Guardian attacks."
 
 func finish_run() -> void:
-	state = VICTORY
-	run.current_node = "victory"
-	SaveManager.save_run(run)
+	state=VICTORY; run.current_node="victory"; SaveManager.save_run(run)
 
-func finish_node(success: bool) -> void:
-	if success:
-		state = MAP
-		run.current_node = "map"
-	else:
-		lose_run()
-	SaveManager.save_run(run)
+func finish_node() -> void:
+	map_rows=MapGenerator.generate(run.floor,map_seed+run.floor*97)
+	state=MAP; run.current_node="map"; SaveManager.save_run(run); message="Choose your next node."
 
 func lose_run() -> void:
-	state = DEFEAT
-	run.current_node = "defeat"
-	SaveManager.save_run(run)
-	message = "Run defeated. Press R."
+	state=DEFEAT; run.current_node="defeat"; SaveManager.save_run(run); message="Run defeated. Press R."
 
 func _draw() -> void:
-	draw_rect(Rect2(0,0,960,540), Color("111820"), true)
-	draw_rect(Rect2(40,30,880,480), Color("263342"), true)
-	draw_string(ThemeDB.fallback_font,Vector2(65,75),"CARD RPG",HORIZONTAL_ALIGNMENT_LEFT,-1,34,Color("f2d27b"))
-	draw_string(ThemeDB.fallback_font,Vector2(65,110),message,HORIZONTAL_ALIGNMENT_LEFT,820,18,Color("d8e0e8"))
+	draw_rect(Rect2(0,0,960,540),Color("111820"),true); draw_rect(Rect2(40,30,880,480),Color("263342"),true)
+	draw_string(ThemeDB.fallback_font,Vector2(65,75),"CARD RPG",HORIZONTAL_ALIGNMENT_LEFT,-1,34,Color("f2d27b")); draw_string(ThemeDB.fallback_font,Vector2(65,110),message,HORIZONTAL_ALIGNMENT_LEFT,820,18,Color("d8e0e8"))
 	match state:
 		MAP: draw_map()
 		BATTLE: draw_battle()
-		SHOP: draw_shop()
-		EVENT: draw_event()
-		REST: draw_rest()
+		REWARD: draw_reward()
+		SHOP: draw_center("SHOP","1 Fireball 60g   2 Heavy Blow 80g   3 Heal 40g\nGold: %d\nB Return"%run.gold)
+		EVENT: draw_center("SHRINE","1 Pray +20 HP   2 Search -8 HP +60g\nB Return")
+		REST: draw_center("REST","1 Rest +30 HP\nHP: %d/%d\nB Return"%[run.player_hp,run.max_hp])
 		BOSS: draw_boss()
-		VICTORY: draw_center("VICTORY","Run complete! Press R for a new run.")
-		DEFEAT: draw_center("DEFEAT","Run failed. Press R for a new run.")
+		VICTORY: draw_center("VICTORY","Run complete! Press R.")
+		DEFEAT: draw_center("DEFEAT","Run failed. Press R.")
 
 func draw_map() -> void:
-	draw_string(ThemeDB.fallback_font,Vector2(100,185),"ADVENTURE MAP",HORIZONTAL_ALIGNMENT_LEFT,-1,30,Color("f2d27b"))
-	var labels=["1 Battle","2 Shop","3 Event","4 Rest","5 Boss"]
-	for i in labels.size():
-		draw_string(ThemeDB.fallback_font,Vector2(120,235+i*42),labels[i],HORIZONTAL_ALIGNMENT_LEFT,-1,21,Color.WHITE)
-	draw_string(ThemeDB.fallback_font,Vector2(570,210),"HP %d/%d"%[run.player_hp,run.max_hp],HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color("8ad7ff"))
-	draw_string(ThemeDB.fallback_font,Vector2(570,250),"Gold %d"%run.gold,HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color("f2d27b"))
-	draw_string(ThemeDB.fallback_font,Vector2(570,290),"Floor %d"%run.floor,HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color.WHITE)
-	draw_string(ThemeDB.fallback_font,Vector2(570,330),"Deck %d"%run.deck.size(),HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color.WHITE)
+	draw_string(ThemeDB.fallback_font,Vector2(100,180),"FLOOR %d — CHOOSE A NODE"%run.floor,HORIZONTAL_ALIGNMENT_LEFT,-1,28,Color("f2d27b"))
+	var nodes:=map_rows[min(run.floor-1,map_rows.size()-1)] if not map_rows.is_empty() else []
+	for i in nodes.size():
+		draw_string(ThemeDB.fallback_font,Vector2(110+i*250,260),"%d  %s"%[i+1,str(nodes[i].type).to_upper()],HORIZONTAL_ALIGNMENT_LEFT,-1,21,Color.WHITE)
+	draw_string(ThemeDB.fallback_font,Vector2(110,390),"HP %d/%d   Gold %d   Deck %d   Relics %d"%[run.player_hp,run.max_hp,run.gold,run.deck.size(),run.relics.size()],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b8c5d2"))
+	draw_string(ThemeDB.fallback_font,Vector2(110,440),"1-5 Choose node   R New Run",HORIZONTAL_ALIGNMENT_LEFT,-1,17,Color("b8c5d2"))
 
 func draw_battle() -> void:
-	draw_string(ThemeDB.fallback_font,Vector2(100,180),"BATTLE",HORIZONTAL_ALIGNMENT_LEFT,-1,30,Color("f2d27b"))
-	draw_string(ThemeDB.fallback_font,Vector2(600,180),"Enemy %d/%d"%[enemy_hp,enemy_max_hp],HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color("ff8a8a"))
-	draw_string(ThemeDB.fallback_font,Vector2(100,225),"Your HP %d/%d   Energy %d"%[run.player_hp,run.max_hp,energy],HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color.WHITE)
+	draw_string(ThemeDB.fallback_font,Vector2(100,175),"%s  %d/%d"%[current_enemy.name,enemy_hp,enemy_max_hp],HORIZONTAL_ALIGNMENT_LEFT,-1,27,Color("ff8a8a")); draw_string(ThemeDB.fallback_font,Vector2(100,215),"HP %d/%d  Energy %d"%[run.player_hp,run.max_hp,energy],HORIZONTAL_ALIGNMENT_LEFT,-1,19,Color.WHITE)
 	for i in hand.size(): draw_card(i,hand[i])
-	draw_string(ThemeDB.fallback_font,Vector2(100,480),"1-3 Play Card   E End Turn   B Map",HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color("b8c5d2"))
+	draw_string(ThemeDB.fallback_font,Vector2(100,480),"1-3 Play   E End Turn",HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color("b8c5d2"))
+
+func draw_reward() -> void:
+	draw_center("REWARD","1 %s    2 %s    3 %s\nChoose one card, or B to skip."%[reward_choices[0],reward_choices[1],reward_choices[2]])
 
 func draw_card(i:int,name:String) -> void:
-	var d:=card_data(name)
-	var r:=Rect2(70+i*280,300,250,115)
-	draw_rect(r,Color("394b5f"),true)
-	draw_string(ThemeDB.fallback_font,r.position+Vector2(15,32),"%d %s"%[i+1,name],HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color.WHITE)
-	draw_string(ThemeDB.fallback_font,r.position+Vector2(15,68),"Cost %d  Damage %d"%[d.cost,d.damage],HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color("f2d27b"))
-
-func draw_shop() -> void:
-	draw_center("SHOP","1 Fireball 60g    2 Heavy Blow 80g    3 Heal 40g\nGold: %d\nB Return"%run.gold)
-
-func draw_event() -> void:
-	draw_center("SHRINE","1 Pray: +20 HP    2 Search: -8 HP +60g\nB Return")
-
-func draw_rest() -> void:
-	draw_center("REST","1 Rest: +30 HP\nHP: %d/%d\nB Return"%[run.player_hp,run.max_hp])
+	var d:=card_data(name); var r:=Rect2(70+i*280,300,250,115); draw_rect(r,Color("394b5f"),true); draw_string(ThemeDB.fallback_font,r.position+Vector2(15,32),"%d %s"%[i+1,name],HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color.WHITE); draw_string(ThemeDB.fallback_font,r.position+Vector2(15,68),"Cost %d  Damage %d  Heal %d"%[d.cost,d.damage,d.heal],HORIZONTAL_ALIGNMENT_LEFT,-1,15,Color("f2d27b"))
 
 func draw_boss() -> void:
-	draw_string(ThemeDB.fallback_font,Vector2(100,180),"GUARDIAN BOSS  %d/%d"%[boss_hp,boss_max_hp],HORIZONTAL_ALIGNMENT_LEFT,-1,28,Color("ff8a8a"))
-	draw_string(ThemeDB.fallback_font,Vector2(100,220),"Your HP %d/%d Energy %d"%[run.player_hp,run.max_hp,energy],HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color.WHITE)
+	draw_string(ThemeDB.fallback_font,Vector2(100,180),"GUARDIAN %d/%d"%[boss_hp,boss_max_hp],HORIZONTAL_ALIGNMENT_LEFT,-1,28,Color("ff8a8a")); draw_string(ThemeDB.fallback_font,Vector2(100,220),"HP %d/%d Energy %d"%[run.player_hp,run.max_hp,energy],HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color.WHITE)
 	for i in hand.size(): draw_card(i,hand[i])
-	draw_string(ThemeDB.fallback_font,Vector2(100,480),"1-3 Play Card   E Guardian Turn   B after victory",HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color("b8c5d2"))
+	draw_string(ThemeDB.fallback_font,Vector2(100,480),"1-3 Play   E Guardian Turn   B Victory",HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color("b8c5d2"))
 
 func draw_center(title:String,text:String) -> void:
-	draw_string(ThemeDB.fallback_font,Vector2(110,210),title,HORIZONTAL_ALIGNMENT_LEFT,-1,34,Color("f2d27b"))
-	draw_string(ThemeDB.fallback_font,Vector2(110,270),text,HORIZONTAL_ALIGNMENT_LEFT,730,20,Color("d8e0e8"))
+	draw_string(ThemeDB.fallback_font,Vector2(110,210),title,HORIZONTAL_ALIGNMENT_LEFT,-1,34,Color("f2d27b")); draw_string(ThemeDB.fallback_font,Vector2(110,270),text,HORIZONTAL_ALIGNMENT_LEFT,730,20,Color("d8e0e8"))
