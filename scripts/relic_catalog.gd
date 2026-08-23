@@ -2,10 +2,10 @@ class_name RelicCatalog
 extends RefCounted
 
 const RELICS := {
-	"Guardian Core": {"description": "+10 max HP", "max_hp": 10, "damage_bonus": 0, "gold_bonus": 0, "block_bonus": 0},
-	"Iron Ring": {"description": "+2 damage to every card", "max_hp": 0, "damage_bonus": 2, "gold_bonus": 0, "block_bonus": 0},
-	"Lucky Coin": {"description": "+20% battle gold", "max_hp": 0, "damage_bonus": 0, "gold_bonus": 20, "block_bonus": 0},
-	"War Drum": {"description": "+1 block from every defensive card", "max_hp": 0, "damage_bonus": 0, "gold_bonus": 0, "block_bonus": 1},
+	"Guardian Core": {"description": "+10 max HP", "max_hp": 10, "damage_bonus": 0, "gold_bonus": 0, "block_bonus": 0, "lifesteal": 0},
+	"Iron Ring": {"description": "+2 damage to every card", "max_hp": 0, "damage_bonus": 2, "gold_bonus": 0, "block_bonus": 0, "lifesteal": 0},
+	"Lucky Coin": {"description": "+20% battle gold", "max_hp": 0, "damage_bonus": 0, "gold_bonus": 20, "block_bonus": 0, "lifesteal": 0},
+	"War Drum": {"description": "+1 block from every defensive card", "max_hp": 0, "damage_bonus": 0, "gold_bonus": 0, "block_bonus": 1, "lifesteal": 0},
 	"Vampire Fang": {"description": "Deal cards heal 2 HP", "max_hp": 0, "damage_bonus": 0, "gold_bonus": 0, "block_bonus": 0, "lifesteal": 2}
 }
 
@@ -36,3 +36,12 @@ static func gold_reward(relics: Array, base: int) -> int:
 	var percent := 0
 	for relic in relics: percent += int(get_relic(relic).get("gold_bonus", 0))
 	return base + int(round(float(base * percent) / 100.0))
+
+static func random_reward(relics: Array, seed_value: int) -> String:
+	var pool := ["Iron Ring", "Lucky Coin", "War Drum", "Vampire Fang"]
+	for relic in relics:
+		pool.erase(relic)
+	if pool.is_empty(): return "Guardian Core"
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	return pool[rng.randi_range(0, pool.size() - 1)]
