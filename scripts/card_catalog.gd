@@ -1,18 +1,17 @@
 extends RefCounted
 
 const CARDS := {
-	"Strike": {"cost": 1, "damage": 15, "heal": 0, "block": 0, "rarity": "Basic"},
-	"Guard": {"cost": 1, "damage": 0, "heal": 10, "block": 0, "rarity": "Basic"},
-	"Fireball": {"cost": 2, "damage": 25, "heal": 0, "block": 0, "rarity": "Uncommon"},
-	"Heavy Blow": {"cost": 3, "damage": 40, "heal": 0, "block": 0, "rarity": "Rare"},
-	"Quick Jab": {"cost": 0, "damage": 7, "heal": 0, "block": 0, "rarity": "Uncommon"},
-	"Drain": {"cost": 2, "damage": 12, "heal": 12, "block": 0, "rarity": "Uncommon"},
-	"Shield Bash": {"cost": 1, "damage": 10, "heal": 0, "block": 8, "rarity": "Uncommon"},
-	"Meteor": {"cost": 3, "damage": 55, "heal": 0, "block": 0, "rarity": "Rare"}
+	"Strike": {"cost": 1, "damage": 15, "heal": 0, "description": "Deal 15 damage."},
+	"Fireball": {"cost": 2, "damage": 25, "heal": 0, "description": "Deal 25 damage."},
+	"Guard": {"cost": 1, "damage": 0, "heal": 10, "description": "Heal 10 HP."},
+	"Heavy Blow": {"cost": 3, "damage": 40, "heal": 0, "description": "Deal 40 damage."},
+	"Slash": {"cost": 1, "damage": 22, "heal": 0, "description": "Deal 22 damage."},
+	"Ice Lance": {"cost": 2, "damage": 30, "heal": 0, "description": "Deal 30 damage."},
+	"Blood Pact": {"cost": 1, "damage": 18, "heal": 8, "description": "Deal 18 damage and heal 8 HP."}
 }
 
 static func get_card(name: String) -> Dictionary:
-	return CARDS.get(name, CARDS["Strike"])
+	return CARDS.get(name, {})
 
-static func names() -> Array:
+static func all_names() -> Array:
 	return CARDS.keys()
