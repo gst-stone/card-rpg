@@ -23,8 +23,7 @@ func add_card(card_name: String) -> void:
 
 func remove_card(card_name: String) -> bool:
 	var index := deck.find(card_name)
-	if index < 0:
-		return false
+	if index < 0: return false
 	deck.remove_at(index)
 	return true
 
@@ -34,16 +33,15 @@ func heal(amount: int) -> void:
 func take_damage(amount: int) -> void:
 	player_hp = max(0, player_hp - max(0, amount))
 
+func add_relic(relic_name: String) -> void:
+	if not relics.has(relic_name): relics.append(relic_name)
+
+func apply_relics() -> void:
+	max_hp = 100 + RelicCatalog.max_hp_bonus(relics)
+	player_hp = min(player_hp, max_hp)
+
 func to_dict() -> Dictionary:
-	return {
-		"player_hp": player_hp,
-		"max_hp": max_hp,
-		"gold": gold,
-		"floor": floor,
-		"deck": deck,
-		"relics": relics,
-		"current_node": current_node
-	}
+	return {"player_hp":player_hp,"max_hp":max_hp,"gold":gold,"floor":floor,"deck":deck,"relics":relics,"current_node":current_node}
 
 func from_dict(data: Dictionary) -> void:
 	player_hp = int(data.get("player_hp", 100))
