@@ -119,19 +119,34 @@ func play_card(index: int) -> void:
 	if status.weak > 0: damage = int(floor(damage * 0.75))
 	if enemy_status.vulnerable > 0: damage = int(ceil(damage * 1.25))
 	var blocked := min(enemy_block, damage); enemy_block -= blocked; damage -= blocked
-	enemy_hp = max(0, enemy_hp - damage); status.player_block += int(effect.block); run.heal(int(effect.heal)); discard.append(hand.pop_at(index))
+	enemy_hp = max(0, enemy_hp - damage)
+	enemy_status.vulnerable = max(enemy_status.vulnerable, int(effect.get("vulnerable", 0)))
+	enemy_status.weak = max(enemy_status.weak, int(effect.get("weak", 0)))
+	enemy_status.poison += int(effect.get("poison", 0))
+	status.player_block += int(effect.block)
+	run.heal(int(effect.heal))
+	discard.append(hand.pop_at(index))
 	if int(effect.draw) > 0: draw_cards(int(effect.draw))
 	message = "%s deals %d." % [name, damage] if damage > 0 else "%s played." % name
 	if enemy_hp <= 0: battle_victory()
 
 func enemy_action() -> void:
-	var action := EnemyCatalog.action_for(current_enemy, turn); var damage := EnemyCatalog.intent_damage(current_enemy, turn)
+	if enemy_status.poison > 0:
+		enemy_hp = max(0, enemy_hp - enemy_status.poison)
+		message = "%s suffers %d poison." % [current_enemy.name, enemy_status.poison]
+		if enemy_hp <= 0:
+			battle_victory()
+			return
+	var action := EnemyCatalog.action_for(current_enemy, turn)
+	var damage := CombatEffects.enemy_phase_damage(EnemyCatalog.intent_damage(current_enemy, turn), enemy_status)
 	match action:
 		"guard": enemy_block += 12
 		"weak": status.weak = max(status.weak, 2)
 		"poison": status.poison += 3
 		"attack", "heavy": pass
-	var remaining := status.absorb(damage); run.take_damage(remaining); enemy_intent = EnemyCatalog.next_intent(current_enemy, turn + 1); message = "%s uses %s — %d damage." % [current_enemy.name, str(action).to_upper(), remaining]
+	var remaining := status.absorb(damage); run.take_damage(remaining); enemy_intent = EnemyCatalog.next_intent(current_enemy, turn + 1)
+	enemy_status.tick()
+	message = "%s uses %s — %d damage." % [current_enemy.name, str(action).to_upper(), remaining]
 
 func end_turn() -> void:
 	if status.poison > 0: run.take_damage(status.poison)
@@ -223,7 +238,7 @@ func draw_map() -> void:
 	for i in nodes.size(): draw_string(ThemeDB.fallback_font,Vector2(110+i*250,260),"%d  %s"%[i+1,str(nodes[i].type).to_upper()],HORIZONTAL_ALIGNMENT_LEFT,-1,21,Color.WHITE)
 	draw_string(ThemeDB.fallback_font,Vector2(110,390),"HP %d/%d   Gold %d   Deck %d   Relics %d"%[run.player_hp,run.max_hp,run.gold,run.deck.size(),run.relics.size()],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b8c5d2")); draw_string(ThemeDB.fallback_font,Vector2(110,440),"1-5 Choose node   R New Run",HORIZONTAL_ALIGNMENT_LEFT,-1,17,Color("b8c5d2"))
 func draw_battle() -> void:
-	draw_string(ThemeDB.fallback_font,Vector2(100,170),"%s  %d/%d"%[current_enemy.name,enemy_hp,enemy_max_hp],HORIZONTAL_ALIGNMENT_LEFT,-1,27,Color("ff8a8a")); draw_string(ThemeDB.fallback_font,Vector2(100,205),"Intent: %s   Enemy Block: %d"%[enemy_intent,enemy_block],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("f0c674")); draw_string(ThemeDB.fallback_font,Vector2(100,240),"HP %d/%d   Energy %d   Block %d"%[run.player_hp,run.max_hp,energy,status.player_block],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b8c5d2"))
+	draw_string(ThemeDB.fallback_font,Vector2(100,170),"%s  %d/%d"%[current_enemy.name,enemy_hp,enemy_max_hp],HORIZONTAL_ALIGNMENT_LEFT,-1,27,Color("ff8a8a")); draw_string(ThemeDB.fallback_font,Vector2(100,205),"Intent: %s   Enemy Block: %d   VULN %d   WEAK %d   POISON %d"%[enemy_intent,enemy_block,enemy_status.vulnerable,enemy_status.weak,enemy_status.poison],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("f0c674")); draw_string(ThemeDB.fallback_font,Vector2(100,240),"HP %d/%d   Energy %d   Block %d"%[run.player_hp,run.max_hp,energy,status.player_block],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b8c5d2"))
 	for i in min(5,hand.size()): var d:=card_data(hand[i]); draw_string(ThemeDB.fallback_font,Vector2(80+i*165,330),"%d %s (%d)"%[i+1,hand[i],int(d.cost)],HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color.WHITE); draw_string(ThemeDB.fallback_font,Vector2(80+i*165,352),str(d.description),HORIZONTAL_ALIGNMENT_LEFT,145,13,Color("b8c5d2"))
 	draw_string(ThemeDB.fallback_font,Vector2(100,440),"1-5 Play Card   E End Turn",HORIZONTAL_ALIGNMENT_LEFT,-1,17,Color("b8c5d2"))
 func draw_reward() -> void:
