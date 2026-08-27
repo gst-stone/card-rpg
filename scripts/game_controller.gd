@@ -270,9 +270,17 @@ func _draw() -> void:
 		VICTORY: draw_center("VICTORY","Run complete! Press R.")
 		DEFEAT: draw_center("DEFEAT","Run failed. Press R.")
 func draw_map() -> void:
-	draw_string(ThemeDB.fallback_font,Vector2(100,180),"FLOOR %d — CHOOSE A NODE"%run.floor,HORIZONTAL_ALIGNMENT_LEFT,-1,28,Color("f2d27b")); var nodes:=map_rows[min(run.floor-1,map_rows.size()-1)] if not map_rows.is_empty() else []
-	for i in nodes.size(): draw_string(ThemeDB.fallback_font,Vector2(110+i*250,260),"%d  %s"%[i+1,str(nodes[i].type).to_upper()],HORIZONTAL_ALIGNMENT_LEFT,-1,21,Color.WHITE)
-	draw_string(ThemeDB.fallback_font,Vector2(110,390),"HP %d/%d   Gold %d   Deck %d   Relics %d"%[run.player_hp,run.max_hp,run.gold,run.deck.size(),run.relics.size()],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b8c5d2")); draw_string(ThemeDB.fallback_font,Vector2(110,440),"1-5 Choose node   R New Run",HORIZONTAL_ALIGNMENT_LEFT,-1,17,Color("b8c5d2"))
+	draw_string(ThemeDB.fallback_font, Vector2(100, 165), "FLOOR %d — CHOOSE A NODE" % run.floor, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color("f2d27b"))
+	var nodes := map_rows[min(run.floor - 1, map_rows.size() - 1)] if not map_rows.is_empty() else []
+	for i in nodes.size():
+		var rect := Rect2(85 + i * 170, 220, 145, 80)
+		draw_rect(rect, Color("35495e"), true)
+		draw_rect(rect, Color("7f95aa"), false, 2.0)
+		draw_string(ThemeDB.fallback_font, rect.position + Vector2(8, 32), str(i + 1), HORIZONTAL_ALIGNMENT_CENTER, 129, 16, Color("f2d27b"))
+		draw_string(ThemeDB.fallback_font, rect.position + Vector2(8, 62), str(nodes[i].type).to_upper(), HORIZONTAL_ALIGNMENT_CENTER, 129, 16, Color.WHITE)
+	draw_string(ThemeDB.fallback_font, Vector2(110, 390), "HP %d/%d   Gold %d   Deck %d   Relics %d" % [run.player_hp, run.max_hp, run.gold, run.deck.size(), run.relics.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("b8c5d2"))
+	draw_string(ThemeDB.fallback_font, Vector2(110, 440), "Click a node to continue. Keyboard 1-5 also works.", HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color("b8c5d2"))
+
 func draw_battle() -> void:
 	draw_string(ThemeDB.fallback_font, Vector2(100, 165), "%s" % current_enemy.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color("ff8a8a"))
 	draw_string(ThemeDB.fallback_font, Vector2(100, 195), "HP %d/%d    Block %d" % [enemy_hp, enemy_max_hp, enemy_block], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color.WHITE)
