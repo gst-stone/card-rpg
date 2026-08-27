@@ -17,12 +17,18 @@ const CARDS := {
 	"Blood Pact": {"cost": 1, "damage": 18, "heal": 8, "block": 0, "draw": 0, "type": "skill", "description": "Deal 18 damage and heal 8 HP."},
 	"Blood Pact+": {"cost": 1, "damage": 24, "heal": 12, "block": 0, "draw": 0, "type": "skill", "description": "Deal 24 damage and heal 12 HP."},
 	"Focus": {"cost": 1, "damage": 0, "heal": 0, "block": 5, "draw": 0, "type": "skill", "description": "Gain 5 block."},
-	"Focus+": {"cost": 1, "damage": 0, "heal": 0, "block": 8, "draw": 0, "type": "skill", "description": "Gain 8 block."}
+	"Focus+": {"cost": 1, "damage": 0, "heal": 0, "block": 8, "draw": 0, "type": "skill", "description": "Gain 8 block."},
+	"Expose": {"cost": 1, "damage": 0, "heal": 0, "block": 0, "draw": 0, "vulnerable": 2, "type": "skill", "description": "Apply 2 Vulnerable."},
+	"Expose+": {"cost": 1, "damage": 0, "heal": 0, "block": 0, "draw": 0, "vulnerable": 3, "type": "skill", "description": "Apply 3 Vulnerable."},
+	"Hex": {"cost": 1, "damage": 0, "heal": 0, "block": 0, "draw": 0, "weak": 2, "type": "skill", "description": "Apply 2 Weak."},
+	"Hex+": {"cost": 1, "damage": 0, "heal": 0, "block": 0, "draw": 0, "weak": 3, "type": "skill", "description": "Apply 3 Weak."},
+	"Toxic Flask": {"cost": 1, "damage": 0, "heal": 0, "block": 0, "draw": 0, "poison": 4, "type": "skill", "description": "Apply 4 Poison."},
+	"Toxic Flask+": {"cost": 1, "damage": 0, "heal": 0, "block": 0, "draw": 0, "poison": 6, "type": "skill", "description": "Apply 6 Poison."}
 }
 
 const upgraded_cards := {
 	"Strike": {"name":"Strike+"}, "Fireball":{"name":"Fireball+"}, "Guard":{"name":"Guard+"},
-	"Heavy Blow":{"name":"Heavy Blow+"}, "Slash":{"name":"Slash+"}, "Ice Lance":{"name":"Ice Lance+"}, "Blood Pact":{"name":"Blood Pact+"}, "Focus":{"name":"Focus+"}
+	"Heavy Blow":{"name":"Heavy Blow+"}, "Slash":{"name":"Slash+"}, "Ice Lance":{"name":"Ice Lance+"}, "Blood Pact":{"name":"Blood Pact+"}, "Focus":{"name":"Focus+"}, "Expose":{"name":"Expose+"}, "Hex":{"name":"Hex+"}, "Toxic Flask":{"name":"Toxic Flask+"}
 }
 
 static func get_card(name: String) -> Dictionary:
