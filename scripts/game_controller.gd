@@ -48,7 +48,43 @@ func _ready() -> void:
 		map_rows = MapGenerator.generate(run.floor, map_seed)
 		state = MAP
 
+func _process(_delta: float) -> void:
+	queue_redraw()
+
+func card_rect(index: int, total: int) -> Rect2:
+	var width := 150.0
+	var height := 190.0
+	var gap := 12.0
+	var total_width := total * width + max(0, total - 1) * gap
+	var start_x := 480.0 - total_width / 2.0
+	return Rect2(start_x + index * (width + gap), 285, width, height)
+
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var p := event.position
+		if state == BATTLE:
+			for i in min(5, hand.size()):
+				if card_rect(i, min(5, hand.size())).has_point(p):
+					play_card(i)
+					return
+			if Rect2(760, 435, 130, 45).has_point(p):
+				end_turn()
+				return
+		elif state == REWARD:
+			for i in reward_choices.size():
+				var rect := Rect2(100 + i * 270, 210, 240, 170)
+				if rect.has_point(p):
+					choose_reward(i)
+					return
+		elif state == MAP:
+			var row := clamp(run.floor - 1, 0, max(0, map_rows.size() - 1))
+			var nodes: Array = map_rows[row] if not map_rows.is_empty() else []
+			for i in nodes.size():
+				var rect := Rect2(85 + i * 170, 220, 145, 80)
+				if rect.has_point(p):
+					select_node(str(nodes[i].type))
+					return
+	if not (event is InputEventKey and event.pressed and not event.echo): return
 	if not (event is InputEventKey and event.pressed and not event.echo): return
 	var key := event.keycode
 	if key == KEY_R: new_run(); return
@@ -238,9 +274,30 @@ func draw_map() -> void:
 	for i in nodes.size(): draw_string(ThemeDB.fallback_font,Vector2(110+i*250,260),"%d  %s"%[i+1,str(nodes[i].type).to_upper()],HORIZONTAL_ALIGNMENT_LEFT,-1,21,Color.WHITE)
 	draw_string(ThemeDB.fallback_font,Vector2(110,390),"HP %d/%d   Gold %d   Deck %d   Relics %d"%[run.player_hp,run.max_hp,run.gold,run.deck.size(),run.relics.size()],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b8c5d2")); draw_string(ThemeDB.fallback_font,Vector2(110,440),"1-5 Choose node   R New Run",HORIZONTAL_ALIGNMENT_LEFT,-1,17,Color("b8c5d2"))
 func draw_battle() -> void:
-	draw_string(ThemeDB.fallback_font,Vector2(100,170),"%s  %d/%d"%[current_enemy.name,enemy_hp,enemy_max_hp],HORIZONTAL_ALIGNMENT_LEFT,-1,27,Color("ff8a8a")); draw_string(ThemeDB.fallback_font,Vector2(100,205),"Intent: %s   Enemy Block: %d   VULN %d   WEAK %d   POISON %d"%[enemy_intent,enemy_block,enemy_status.vulnerable,enemy_status.weak,enemy_status.poison],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("f0c674")); draw_string(ThemeDB.fallback_font,Vector2(100,240),"HP %d/%d   Energy %d   Block %d"%[run.player_hp,run.max_hp,energy,status.player_block],HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b8c5d2"))
-	for i in min(5,hand.size()): var d:=card_data(hand[i]); draw_string(ThemeDB.fallback_font,Vector2(80+i*165,330),"%d %s (%d)"%[i+1,hand[i],int(d.cost)],HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color.WHITE); draw_string(ThemeDB.fallback_font,Vector2(80+i*165,352),str(d.description),HORIZONTAL_ALIGNMENT_LEFT,145,13,Color("b8c5d2"))
-	draw_string(ThemeDB.fallback_font,Vector2(100,440),"1-5 Play Card   E End Turn",HORIZONTAL_ALIGNMENT_LEFT,-1,17,Color("b8c5d2"))
+	draw_string(ThemeDB.fallback_font, Vector2(100, 165), "%s" % current_enemy.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color("ff8a8a"))
+	draw_string(ThemeDB.fallback_font, Vector2(100, 195), "HP %d/%d    Block %d" % [enemy_hp, enemy_max_hp, enemy_block], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color.WHITE)
+	draw_string(ThemeDB.fallback_font, Vector2(100, 225), "Intent: %s   VULN %d   WEAK %d   POISON %d" % [enemy_intent, enemy_status.vulnerable, enemy_status.weak, enemy_status.poison], HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color("f0c674"))
+	draw_string(ThemeDB.fallback_font, Vector2(650, 165), "HERO HP %d/%d" % [run.player_hp, run.max_hp], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("8fd3ff"))
+	draw_string(ThemeDB.fallback_font, Vector2(650, 195), "Energy %d/3   Block %d" % [energy, status.player_block], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("f2d27b"))
+
+	for i in min(5, hand.size()):
+		var d := card_data(hand[i])
+		var rect := card_rect(i, min(5, hand.size()))
+		var affordable := int(d.cost) <= energy
+		var fill := Color("35495e") if affordable else Color("292d35")
+		draw_rect(rect, fill, true)
+		draw_rect(rect, Color("f2d27b") if affordable else Color("68717d"), false, 2.0)
+		draw_string(ThemeDB.fallback_font, rect.position + Vector2(12, 30), str(hand[i]), HORIZONTAL_ALIGNMENT_CENTER, int(rect.size.x - 24), 18, Color.WHITE)
+		draw_string(ThemeDB.fallback_font, rect.position + Vector2(12, 58), "COST %d" % int(d.cost), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("f2d27b"))
+		draw_multiline_string(ThemeDB.fallback_font, rect.position + Vector2(12, 88), str(d.description), HORIZONTAL_ALIGNMENT_LEFT, int(rect.size.x - 24), 14, 4, Color("d8e0e8"))
+		draw_string(ThemeDB.fallback_font, rect.position + Vector2(12, 174), "CLICK TO PLAY", HORIZONTAL_ALIGNMENT_CENTER, int(rect.size.x - 24), 12, Color("8fd3ff"))
+
+	var end_rect := Rect2(760, 435, 130, 45)
+	draw_rect(end_rect, Color("6b4f2b"), true)
+	draw_rect(end_rect, Color("f2d27b"), false, 2.0)
+	draw_string(ThemeDB.fallback_font, end_rect.position + Vector2(8, 29), "END TURN", HORIZONTAL_ALIGNMENT_CENTER, 114, 16, Color.WHITE)
+	draw_string(ThemeDB.fallback_font, Vector2(100, 500), "Click a card to play. Keyboard 1-5 and E still work.", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("b8c5d2"))
+
 func draw_reward() -> void:
 	draw_string(ThemeDB.fallback_font,Vector2(100,180),"CHOOSE A CARD",HORIZONTAL_ALIGNMENT_LEFT,-1,28,Color("f2d27b")); for i in reward_choices.size(): var d:=card_data(reward_choices[i]); draw_string(ThemeDB.fallback_font,Vector2(100,240+i*70),"%d  %s — Cost %d — %s"%[i+1,reward_choices[i],int(d.cost),str(d.description)],HORIZONTAL_ALIGNMENT_LEFT,750,18,Color.WHITE); draw_string(ThemeDB.fallback_font,Vector2(100,460),"B Skip",HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color("b8c5d2"))
 func draw_shop() -> void: draw_center("SHOP","1 Fireball 60g   2 Heavy Blow 80g   3 Heal 40g\n4 Upgrade 90g   5 Remove 75g\nGold: %d   B Leave"%run.gold)
