@@ -50,3 +50,12 @@ A Godot 4 roguelike deck-building prototype.
 - `B`: finish after victory
 
 Open the project with Godot 4.x and run `scenes/main.tscn`.
+
+
+## Latest UI update
+
+- Clickable card UI
+- Card hover lift effect
+- Enemy and hero HP bars
+- Combat damage feedback
+- Mouse-clickable map nodes and end-turn button
