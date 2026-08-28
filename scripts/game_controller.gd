@@ -94,6 +94,17 @@ func _input(event: InputEvent) -> void:
 				break
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var p := event.position
+		if state == BOSS:
+			for i in min(5, hand.size()):
+				if card_rect(i, min(5, hand.size())).has_point(p):
+					boss_play(i)
+					return
+			if Rect2(760, 435, 130, 45).has_point(p):
+				boss_turn()
+				return
+			if boss_defeated and Rect2(390, 430, 180, 50).has_point(p):
+				finish_run()
+				return
 		if state == BATTLE:
 			for i in min(5, hand.size()):
 				if card_rect(i, min(5, hand.size())).has_point(p):
@@ -116,7 +127,6 @@ func _input(event: InputEvent) -> void:
 				if rect.has_point(p):
 					select_node(str(nodes[i].type))
 					return
-	if not (event is InputEventKey and event.pressed and not event.echo): return
 	if not (event is InputEventKey and event.pressed and not event.echo): return
 	var key := event.keycode
 	if key == KEY_R: new_run(); return
@@ -433,4 +443,44 @@ func draw_reward() -> void:
 	draw_string(ThemeDB.fallback_font,Vector2(100,180),"CHOOSE A CARD",HORIZONTAL_ALIGNMENT_LEFT,-1,28,Color("f2d27b")); for i in reward_choices.size(): var d:=card_data(reward_choices[i]); draw_string(ThemeDB.fallback_font,Vector2(100,240+i*70),"%d  %s — Cost %d — %s"%[i+1,reward_choices[i],int(d.cost),str(d.description)],HORIZONTAL_ALIGNMENT_LEFT,750,18,Color.WHITE); draw_string(ThemeDB.fallback_font,Vector2(100,460),"B Skip",HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color("b8c5d2"))
 func draw_shop() -> void: draw_center("SHOP","1 Fireball 60g   2 Heavy Blow 80g   3 Heal 40g\n4 Upgrade 90g   5 Remove 75g\nGold: %d   B Leave"%run.gold)
 func draw_center(title: String, body: String) -> void: draw_string(ThemeDB.fallback_font,Vector2(100,200),title,HORIZONTAL_ALIGNMENT_LEFT,-1,30,Color("f2d27b")); draw_multiline_string(ThemeDB.fallback_font,Vector2(100,260),body,HORIZONTAL_ALIGNMENT_LEFT,760,20,8,Color.WHITE)
-func draw_boss() -> void: draw_center("BOSS — %s  %d/%d"%[boss.name,boss_hp,boss_max_hp],"Phase %d\nHP %d/%d   Energy %d   Block %d\n1-5 Play Card   E Boss Turn"%[2 if boss_phase_two() else 1,run.player_hp,run.max_hp,energy,status.player_block])
+func draw_boss() -> void:
+	var phase := 2 if boss_phase_two() else 1
+	draw_string(ThemeDB.fallback_font, Vector2(100, 160), "BOSS — %s" % boss.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color("e98b9a"))
+	draw_string(ThemeDB.fallback_font, Vector2(100, 195), "PHASE %d    HP %d/%d" % [phase, boss_hp, boss_max_hp], HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
+	draw_string(ThemeDB.fallback_font, Vector2(650, 165), "HERO HP %d/%d" % [run.player_hp, run.max_hp], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("8fd3ff"))
+	draw_string(ThemeDB.fallback_font, Vector2(650, 195), "Energy %d/3   Block %d" % [energy, status.player_block], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("f2d27b"))
+	var boss_center := Vector2(250, 305)
+	draw_circle(boss_center, 58, Color("8f3d58") if phase == 1 else Color("c04a4a"))
+	draw_circle(boss_center + Vector2(-18,-8), 7, Color("17131a"))
+	draw_circle(boss_center + Vector2(18,-8), 7, Color("17131a"))
+	draw_arc(boss_center + Vector2(0,12), 24, 0.1, 3.04, 24, Color("17131a"), 4.0)
+	draw_string(ThemeDB.fallback_font, boss_center + Vector2(-70, 88), "BOSS", HORIZONTAL_ALIGNMENT_CENTER, 140, 16, Color("ffb4c0"))
+	var boss_bar := Rect2(100, 385, 300, 20)
+	draw_rect(boss_bar, Color("351b25"), true)
+	var ratio := float(boss_hp) / float(max(1, boss_max_hp))
+	draw_rect(Rect2(boss_bar.position, Vector2(boss_bar.size.x * ratio, boss_bar.size.y)), Color("d95763"), true)
+	draw_rect(boss_bar, Color("f0c674"), false, 2.0)
+	if boss_defeated:
+		var victory_rect := Rect2(390, 430, 180, 50)
+		draw_rect(victory_rect, Color("4b6f4b"), true)
+		draw_rect(victory_rect, Color("a9d18e"), false, 2.0)
+		draw_string(ThemeDB.fallback_font, victory_rect.position + Vector2(8,32), "FINISH RUN", HORIZONTAL_ALIGNMENT_CENTER, 164, 17, Color.WHITE)
+		return
+	for i in min(5, hand.size()):
+		var d := card_data(hand[i])
+		var rect := card_rect(i, min(5, hand.size()))
+		var affordable := int(d.cost) <= energy
+		var card_type := str(d.get("type", "attack"))
+		var type_color := Color("c75b5b") if card_type == "attack" else Color("5b8fc7")
+		if card_type == "power": type_color = Color("a06bc7")
+		if card_type == "status": type_color = Color("6fa86f")
+		draw_rect(rect, type_color.darkened(0.55) if affordable else Color("292d35"), true)
+		draw_rect(rect, type_color if affordable else Color("68717d"), false, 3.0)
+		draw_string(ThemeDB.fallback_font, rect.position + Vector2(12, 30), str(hand[i]), HORIZONTAL_ALIGNMENT_CENTER, int(rect.size.x - 24), 18, Color.WHITE)
+		draw_string(ThemeDB.fallback_font, rect.position + Vector2(12, 58), "COST %d" % int(d.cost), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("f2d27b"))
+		draw_multiline_string(ThemeDB.fallback_font, rect.position + Vector2(12, 88), str(d.description), HORIZONTAL_ALIGNMENT_LEFT, int(rect.size.x - 24), 14, 4, Color("d8e0e8"))
+	var end_rect := Rect2(760, 435, 130, 45)
+	draw_rect(end_rect, Color("6b4f2b"), true)
+	draw_rect(end_rect, Color("f2d27b"), false, 2.0)
+	draw_string(ThemeDB.fallback_font, end_rect.position + Vector2(8,29), "BOSS TURN", HORIZONTAL_ALIGNMENT_CENTER, 114, 15, Color.WHITE)
+	draw_string(ThemeDB.fallback_font, Vector2(100, 500), "Click cards to attack. Click BOSS TURN to continue.", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("b8c5d2"))
