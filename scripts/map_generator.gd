@@ -5,7 +5,8 @@ extends RefCounted
 # The middle path guarantees event, rest, shop and elite opportunities.
 static func generate(floor: int, seed_value: int = 0) -> Array:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = seed_value if seed_value != 0 else Time.get_unix_time_from_system()
+	var actual_seed := seed_value if seed_value != 0 else 7919 + floor * 104729
+	rng.seed = actual_seed
 	var rows: Array = []
 	var guaranteed := ["battle", "event", "battle", "rest", "shop", "elite"]
 	for row in range(7):
