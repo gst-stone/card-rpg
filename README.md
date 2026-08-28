@@ -64,3 +64,6 @@ Open the project with Godot 4.x and run `scenes/main.tscn`.
 - Attack flash and floating damage numbers
 - Fireball projectile visual effect
 - Ice Lance projectile visual effect
+- Card type visual styles and colored borders
+- Attack / skill / power / status labels
+- Fixed battle rendering indentation issue
