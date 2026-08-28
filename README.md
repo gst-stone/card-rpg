@@ -11,9 +11,10 @@ A Godot 4 roguelike deck-building prototype.
 - Guaranteed event, rest, shop and elite opportunities on the middle route
 - Turn-based combat with draw/discard piles
 - Energy system and card costs
-- Starter deck plus reward cards: Slash / Ice Lance / Blood Pact
+- Expanded reward pool with attack, defense, draw, healing, debuff and poison archetypes
 - Card block and healing effects
-- Relics: Guardian Core / Iron Ring / Lucky Coin
+- Relics: Guardian Core / Iron Ring / Lucky Coin / War Drum / Vampire Fang
+- Six normal enemy archetypes plus dedicated elite encounters
 - Scaling enemies and dedicated boss encounters
 - Gold economy and shop purchases
 - Random shrine events
@@ -28,7 +29,7 @@ A Godot 4 roguelike deck-building prototype.
 - `R`: start a new run
 
 ### Battle
-- `1` / `2` / `3`: play the card in hand
+- `1` / `2` / `3` / `4` / `5`: play a card in hand
 - `E`: end turn
 
 ### Reward
@@ -37,6 +38,8 @@ A Godot 4 roguelike deck-building prototype.
 
 ### Shop
 - `1` / `2` / `3`: buy an item
+- `4`: upgrade a card
+- `5`: remove a card
 - `B`: return to map
 
 ### Event / Rest
@@ -45,58 +48,48 @@ A Godot 4 roguelike deck-building prototype.
 - `B`: return to map
 
 ### Boss
-- `1` / `2` / `3`: play a card
+- `1` / `2` / `3` / `4` / `5`: play a card
 - `E`: boss turn
 - `B`: finish after victory
 
 Open the project with Godot 4.x and run `scenes/main.tscn`.
 
-
-## Latest UI update
+## Presentation layer
 
 - Clickable card UI
 - Card hover lift effect
 - Enemy and hero HP bars
 - Combat damage feedback
 - Mouse-clickable map nodes and end-turn button
-
-- Animated placeholder hero and enemy visuals
+- Animated procedural hero and enemy visuals
 - Attack flash and floating damage numbers
 - Fireball projectile visual effect
 - Ice Lance projectile visual effect
 - Card type visual styles and colored borders
 - Attack / skill / power / status labels
-- Fixed battle rendering indentation issue
-
-
-## Playable prototype status
-
-The current repository contains a complete vertical-slice prototype:
-
-- Main menu and run restart
-- Procedural node choices
-- Normal and elite battles
-- Turn-based card combat with energy, draw and discard
-- Block, Weak, Vulnerable and Poison
-- Card rewards and upgrades/removal
-- Shops, events and rest nodes
-- Relics and elite rewards
-- Multi-phase bosses
-- Mouse-clickable battle cards, map nodes and boss cards
-- Combat feedback, health bars, hover effects and projectile visuals
-
-## Run
-
-Open the project with Godot 4.x and run the configured main scene.
-
-## Phase 2 — Presentation layer complete
-
 - Production asset folder structure for art and audio
 - Central visual theme API
 - Replaceable character art layer
 - Layered dark-fantasy background and framed panels
-- Unified card colors and presentation hooks
 - Audio manager interface ready for SFX assets
-- Existing hover, projectile, damage, HP-bar and combat feedback retained
 
-The prototype remains dependency-free: external PNG/OGG assets can now be added without rewriting gameplay logic.
+## Vertical slice status
+
+The repository contains a complete playable vertical slice: map routing, normal and elite battles, card combat, rewards, upgrades/removal, shops, events, rest, relics, multi-phase bosses, persistence and presentation feedback are all wired together.
+
+## Phase 3 — Content expansion complete
+
+Phase 3 increases replayability without introducing external dependencies:
+
+- Reward pool expanded from 10 to 18 base cards
+- Added Quick Jab / Fortify / Poison Dart / Cleave / Siphon / Adrenaline / Shatter / Riposte, each with an upgrade path
+- Added Plague Witch / Blood Hound / Stone Warden enemy archetypes
+- Enemy intent patterns now cover poison, guard and weakening behaviors across the expanded roster
+- Existing relic and combat systems remain compatible with the new content
+- Save format remains JSON-compatible and backward compatible
+
+The next development layer can focus on production art/audio, richer boss mechanics, balance telemetry and a larger event/relic pool.
+
+## Run
+
+Open the project with Godot 4.x and run the configured main scene.
