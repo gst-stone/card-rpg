@@ -59,3 +59,6 @@ Open the project with Godot 4.x and run `scenes/main.tscn`.
 - Enemy and hero HP bars
 - Combat damage feedback
 - Mouse-clickable map nodes and end-turn button
+
+- Animated placeholder hero and enemy visuals
+- Attack flash and floating damage numbers
