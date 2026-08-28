@@ -67,3 +67,24 @@ Open the project with Godot 4.x and run `scenes/main.tscn`.
 - Card type visual styles and colored borders
 - Attack / skill / power / status labels
 - Fixed battle rendering indentation issue
+
+
+## Playable prototype status
+
+The current repository contains a complete vertical-slice prototype:
+
+- Main menu and run restart
+- Procedural node choices
+- Normal and elite battles
+- Turn-based card combat with energy, draw and discard
+- Block, Weak, Vulnerable and Poison
+- Card rewards and upgrades/removal
+- Shops, events and rest nodes
+- Relics and elite rewards
+- Multi-phase bosses
+- Mouse-clickable battle cards, map nodes and boss cards
+- Combat feedback, health bars, hover effects and projectile visuals
+
+## Run
+
+Open the project with Godot 4.x and run the configured main scene.
