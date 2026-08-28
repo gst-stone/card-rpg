@@ -322,7 +322,14 @@ func finish_node() -> void: map_rows = MapGenerator.generate(run.floor, map_seed
 func lose_run() -> void: state = DEFEAT; run.current_node = "defeat"; SaveManager.save_run(run); message = "Run defeated. Press R."
 
 func _draw() -> void:
-	draw_rect(Rect2(0,0,960,540),Color("111820"),true); draw_rect(Rect2(40,30,880,480),Color("263342"),true); draw_string(ThemeDB.fallback_font,Vector2(65,75),"CARD RPG",HORIZONTAL_ALIGNMENT_LEFT,-1,34,Color("f2d27b")); draw_string(ThemeDB.fallback_font,Vector2(65,110),message,HORIZONTAL_ALIGNMENT_LEFT,820,18,Color("d8e0e8"))
+	draw_rect(Rect2(0,0,960,540),Color("0c1118"),true)
+	# layered background and frame
+	draw_circle(Vector2(120,120),180,Color("172433"),true)
+	draw_circle(Vector2(850,90),150,Color("201b32"),true)
+	draw_rect(Rect2(32,24,896,492),Color("141e29"),true)
+	draw_rect(Rect2(40,30,880,480),VisualTheme.panel(),true)
+	draw_rect(Rect2(40,30,880,480),Color("6c7f94"),false,2.0)
+	draw_string(ThemeDB.fallback_font,Vector2(65,75),"CARD RPG",HORIZONTAL_ALIGNMENT_LEFT,-1,34,Color("f2d27b")); draw_string(ThemeDB.fallback_font,Vector2(65,110),message,HORIZONTAL_ALIGNMENT_LEFT,820,18,Color("d8e0e8"))
 	match state:
 		MAP: draw_map()
 		BATTLE: draw_battle()
@@ -352,21 +359,12 @@ func draw_battle() -> void:
 	draw_string(ThemeDB.fallback_font, Vector2(650, 165), "HERO HP %d/%d" % [run.player_hp, run.max_hp], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("8fd3ff"))
 	draw_string(ThemeDB.fallback_font, Vector2(650, 195), "Energy %d/3   Block %d" % [energy, status.player_block], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("f2d27b"))
 
-	# Character placeholders with simple animation
+	# Character art layer (procedural now, replaceable by Sprite2D assets later)
 	var enemy_center := Vector2(250, 305)
-	var enemy_color := Color("ff5f6d") if enemy_flash <= 0.0 else Color.WHITE
-	draw_circle(enemy_center, 46, enemy_color)
-	draw_circle(enemy_center + Vector2(-15, -6), 6, Color("18212b"))
-	draw_circle(enemy_center + Vector2(15, -6), 6, Color("18212b"))
-	draw_arc(enemy_center + Vector2(0, 10), 18, 0.15, 2.99, 20, Color("18212b"), 3.0)
-	draw_string(ThemeDB.fallback_font, enemy_center + Vector2(-60, 78), "ENEMY", HORIZONTAL_ALIGNMENT_CENTER, 120, 14, Color("ffb0b6"))
+	CharacterArt.draw_enemy(self, enemy_center, enemy_flash, current_enemy.name == "Elite Knight")
 
-	var hero_center := Vector2(760, 305 + sin(player_bob * 2.5) * 2.0)
-	var hero_color := Color("73c7ff") if player_attack_flash <= 0.0 else Color.WHITE
-	draw_circle(hero_center, 42, hero_color)
-	draw_circle(hero_center + Vector2(-12, -7), 5, Color("18212b"))
-	draw_circle(hero_center + Vector2(12, -7), 5, Color("18212b"))
-	draw_line(hero_center + Vector2(-16, 14), hero_center + Vector2(16, 14), Color("18212b"), 3.0)
+	var hero_center := Vector2(760, 305)
+	CharacterArt.draw_hero(self, hero_center, player_attack_flash, player_bob)
 	if player_attack_flash > 0.0:
 		draw_line(hero_center + Vector2(-30, -35), hero_center + Vector2(70, -65), Color("f2d27b"), 5.0)
 	draw_string(ThemeDB.fallback_font, hero_center + Vector2(-60, 72), "HERO", HORIZONTAL_ALIGNMENT_CENTER, 120, 14, Color("8fd3ff"))
