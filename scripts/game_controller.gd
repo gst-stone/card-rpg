@@ -375,7 +375,7 @@ func draw_battle() -> void:
 			draw_colored_polygon(points, Color("8fd3ff"))
 			draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[0]]), Color.WHITE, 2.0)
 
-		if enemy_hit_time > 0.0:
+	if enemy_hit_time > 0.0:
 		var hit_alpha := clamp(enemy_hit_time / 0.65, 0.0, 1.0)
 		var hit_y := enemy_center.y - 55.0 - (1.0 - hit_alpha) * 30.0
 		draw_string(ThemeDB.fallback_font, Vector2(enemy_center.x - 40, hit_y), enemy_hit_text, HORIZONTAL_ALIGNMENT_CENTER, 80, 28, Color(1.0, 0.85, 0.3, hit_alpha))
@@ -407,12 +407,20 @@ func draw_battle() -> void:
 		if i == hovered_card:
 			rect.position.y -= 14.0
 		var affordable := int(d.cost) <= energy
-		var fill := Color("35495e") if affordable else Color("292d35")
+		var card_type := str(d.get("type", "attack"))
+		var type_color := Color("c75b5b") if card_type == "attack" else Color("5b8fc7")
+		if card_type == "power": type_color = Color("a06bc7")
+		if card_type == "status": type_color = Color("6fa86f")
+		var fill := type_color.darkened(0.55) if affordable else Color("292d35")
 		draw_rect(rect, fill, true)
-		draw_rect(rect, Color("f2d27b") if affordable else Color("68717d"), false, 2.0)
-		draw_string(ThemeDB.fallback_font, rect.position + Vector2(12, 30), str(hand[i]), HORIZONTAL_ALIGNMENT_CENTER, int(rect.size.x - 24), 18, Color.WHITE)
-		draw_string(ThemeDB.fallback_font, rect.position + Vector2(12, 58), "COST %d" % int(d.cost), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("f2d27b"))
-		draw_multiline_string(ThemeDB.fallback_font, rect.position + Vector2(12, 88), str(d.description), HORIZONTAL_ALIGNMENT_LEFT, int(rect.size.x - 24), 14, 4, Color("d8e0e8"))
+		draw_rect(rect, type_color if affordable else Color("68717d"), false, 3.0)
+		var icon := "⚔" if card_type == "attack" else "✦"
+		if card_type == "power": icon = "★"
+		if card_type == "status": icon = "☠"
+		draw_string(ThemeDB.fallback_font, rect.position + Vector2(12, 26), icon + " " + card_type.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, type_color.lightened(0.25))
+		draw_string(ThemeDB.fallback_font, rect.position + Vector2(12, 52), str(hand[i]), HORIZONTAL_ALIGNMENT_CENTER, int(rect.size.x - 24), 18, Color.WHITE)
+		draw_string(ThemeDB.fallback_font, rect.position + Vector2(12, 78), "COST %d" % int(d.cost), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("f2d27b"))
+		draw_multiline_string(ThemeDB.fallback_font, rect.position + Vector2(12, 104), str(d.description), HORIZONTAL_ALIGNMENT_LEFT, int(rect.size.x - 24), 14, 4, Color("d8e0e8"))
 		draw_string(ThemeDB.fallback_font, rect.position + Vector2(12, 174), "CLICK TO PLAY", HORIZONTAL_ALIGNMENT_CENTER, int(rect.size.x - 24), 12, Color("8fd3ff"))
 
 	var end_rect := Rect2(760, 435, 130, 45)
