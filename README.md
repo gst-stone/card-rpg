@@ -88,3 +88,15 @@ The current repository contains a complete vertical-slice prototype:
 ## Run
 
 Open the project with Godot 4.x and run the configured main scene.
+
+## Phase 2 — Presentation layer complete
+
+- Production asset folder structure for art and audio
+- Central visual theme API
+- Replaceable character art layer
+- Layered dark-fantasy background and framed panels
+- Unified card colors and presentation hooks
+- Audio manager interface ready for SFX assets
+- Existing hover, projectile, damage, HP-bar and combat feedback retained
+
+The prototype remains dependency-free: external PNG/OGG assets can now be added without rewriting gameplay logic.
