@@ -46,6 +46,12 @@ var enemy_hit_text := ""
 var enemy_hit_time := 0.0
 var player_attack_flash := 0.0
 var player_bob := 0.0
+var projectile_active := false
+var projectile_pos := Vector2.ZERO
+var projectile_target := Vector2.ZERO
+var projectile_kind := ""
+var projectile_time := 0.0
+var projectile_duration := 0.35
 
 func _ready() -> void:
 	run = SaveManager.load_run()
@@ -63,6 +69,12 @@ func _process(delta: float) -> void:
 	enemy_hit_time = max(0.0, enemy_hit_time - delta)
 	player_attack_flash = max(0.0, player_attack_flash - delta)
 	player_bob += delta
+	if projectile_active:
+		projectile_time += delta
+		var t := clamp(projectile_time / projectile_duration, 0.0, 1.0)
+		projectile_pos = projectile_pos.lerp(projectile_target, min(1.0, delta * 8.0))
+		if t >= 1.0:
+			projectile_active = false
 	queue_redraw()
 
 func card_rect(index: int, total: int) -> Rect2:
@@ -180,6 +192,20 @@ func play_card(index: int) -> void:
 	last_damage = damage
 	feedback_time = 0.75
 	if damage > 0:
+		if name == "Fireball" or name == "Fireball+":
+			projectile_active = true
+			projectile_kind = "fireball"
+			projectile_pos = Vector2(700, 285)
+			projectile_target = Vector2(285, 305)
+			projectile_time = 0.0
+			projectile_duration = 0.42
+		elif name == "Ice Lance" or name == "Ice Lance+":
+			projectile_active = true
+			projectile_kind = "ice"
+			projectile_pos = Vector2(700, 285)
+			projectile_target = Vector2(285, 305)
+			projectile_time = 0.0
+			projectile_duration = 0.32
 		enemy_flash = 0.22
 		player_attack_flash = 0.16
 		enemy_hit_text = "-%d" % damage
@@ -335,7 +361,21 @@ func draw_battle() -> void:
 		draw_line(hero_center + Vector2(-30, -35), hero_center + Vector2(70, -65), Color("f2d27b"), 5.0)
 	draw_string(ThemeDB.fallback_font, hero_center + Vector2(-60, 72), "HERO", HORIZONTAL_ALIGNMENT_CENTER, 120, 14, Color("8fd3ff"))
 
-	if enemy_hit_time > 0.0:
+	if projectile_active:
+		if projectile_kind == "fireball":
+			draw_circle(projectile_pos, 15, Color("ff7a45"))
+			draw_circle(projectile_pos, 8, Color("ffe08a"))
+			draw_circle(projectile_pos + Vector2(-18, 8), 7, Color(1.0, 0.28, 0.08, 0.55))
+		elif projectile_kind == "ice":
+			var points := PackedVector2Array([
+				projectile_pos + Vector2(18, 0),
+				projectile_pos + Vector2(-12, -10),
+				projectile_pos + Vector2(-12, 10)
+			])
+			draw_colored_polygon(points, Color("8fd3ff"))
+			draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[0]]), Color.WHITE, 2.0)
+
+		if enemy_hit_time > 0.0:
 		var hit_alpha := clamp(enemy_hit_time / 0.65, 0.0, 1.0)
 		var hit_y := enemy_center.y - 55.0 - (1.0 - hit_alpha) * 30.0
 		draw_string(ThemeDB.fallback_font, Vector2(enemy_center.x - 40, hit_y), enemy_hit_text, HORIZONTAL_ALIGNMENT_CENTER, 80, 28, Color(1.0, 0.85, 0.3, hit_alpha))
