@@ -62,3 +62,5 @@ Open the project with Godot 4.x and run `scenes/main.tscn`.
 
 - Animated placeholder hero and enemy visuals
 - Attack flash and floating damage numbers
+- Fireball projectile visual effect
+- Ice Lance projectile visual effect
