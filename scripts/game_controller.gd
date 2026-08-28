@@ -42,6 +42,10 @@ var last_played := ""
 var last_damage := 0
 var feedback_time := 0.0
 var enemy_flash := 0.0
+var enemy_hit_text := ""
+var enemy_hit_time := 0.0
+var player_attack_flash := 0.0
+var player_bob := 0.0
 
 func _ready() -> void:
 	run = SaveManager.load_run()
@@ -56,6 +60,9 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	feedback_time = max(0.0, feedback_time - delta)
 	enemy_flash = max(0.0, enemy_flash - delta)
+	enemy_hit_time = max(0.0, enemy_hit_time - delta)
+	player_attack_flash = max(0.0, player_attack_flash - delta)
+	player_bob += delta
 	queue_redraw()
 
 func card_rect(index: int, total: int) -> Rect2:
@@ -174,6 +181,9 @@ func play_card(index: int) -> void:
 	feedback_time = 0.75
 	if damage > 0:
 		enemy_flash = 0.22
+		player_attack_flash = 0.16
+		enemy_hit_text = "-%d" % damage
+		enemy_hit_time = 0.65
 	enemy_status.vulnerable = max(enemy_status.vulnerable, int(effect.get("vulnerable", 0)))
 	enemy_status.weak = max(enemy_status.weak, int(effect.get("weak", 0)))
 	enemy_status.poison += int(effect.get("poison", 0))
@@ -306,15 +316,39 @@ func draw_battle() -> void:
 	draw_string(ThemeDB.fallback_font, Vector2(650, 165), "HERO HP %d/%d" % [run.player_hp, run.max_hp], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("8fd3ff"))
 	draw_string(ThemeDB.fallback_font, Vector2(650, 195), "Energy %d/3   Block %d" % [energy, status.player_block], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("f2d27b"))
 
+	# Character placeholders with simple animation
+	var enemy_center := Vector2(250, 305)
+	var enemy_color := Color("ff5f6d") if enemy_flash <= 0.0 else Color.WHITE
+	draw_circle(enemy_center, 46, enemy_color)
+	draw_circle(enemy_center + Vector2(-15, -6), 6, Color("18212b"))
+	draw_circle(enemy_center + Vector2(15, -6), 6, Color("18212b"))
+	draw_arc(enemy_center + Vector2(0, 10), 18, 0.15, 2.99, 20, Color("18212b"), 3.0)
+	draw_string(ThemeDB.fallback_font, enemy_center + Vector2(-60, 78), "ENEMY", HORIZONTAL_ALIGNMENT_CENTER, 120, 14, Color("ffb0b6"))
+
+	var hero_center := Vector2(760, 305 + sin(player_bob * 2.5) * 2.0)
+	var hero_color := Color("73c7ff") if player_attack_flash <= 0.0 else Color.WHITE
+	draw_circle(hero_center, 42, hero_color)
+	draw_circle(hero_center + Vector2(-12, -7), 5, Color("18212b"))
+	draw_circle(hero_center + Vector2(12, -7), 5, Color("18212b"))
+	draw_line(hero_center + Vector2(-16, 14), hero_center + Vector2(16, 14), Color("18212b"), 3.0)
+	if player_attack_flash > 0.0:
+		draw_line(hero_center + Vector2(-30, -35), hero_center + Vector2(70, -65), Color("f2d27b"), 5.0)
+	draw_string(ThemeDB.fallback_font, hero_center + Vector2(-60, 72), "HERO", HORIZONTAL_ALIGNMENT_CENTER, 120, 14, Color("8fd3ff"))
+
+	if enemy_hit_time > 0.0:
+		var hit_alpha := clamp(enemy_hit_time / 0.65, 0.0, 1.0)
+		var hit_y := enemy_center.y - 55.0 - (1.0 - hit_alpha) * 30.0
+		draw_string(ThemeDB.fallback_font, Vector2(enemy_center.x - 40, hit_y), enemy_hit_text, HORIZONTAL_ALIGNMENT_CENTER, 80, 28, Color(1.0, 0.85, 0.3, hit_alpha))
+
 	# Enemy HP bar
-	var enemy_bar := Rect2(100, 240, 300, 18)
+	var enemy_bar := Rect2(100, 370, 300, 18)
 	draw_rect(enemy_bar, Color("3a2024"), true)
 	var enemy_ratio := float(enemy_hp) / float(max(1, enemy_max_hp))
 	draw_rect(Rect2(enemy_bar.position, Vector2(enemy_bar.size.x * enemy_ratio, enemy_bar.size.y)), Color("d95763") if enemy_flash <= 0.0 else Color.WHITE, true)
 	draw_rect(enemy_bar, Color("f0c674"), false, 2.0)
 
 	# Player HP bar
-	var hero_bar := Rect2(650, 220, 220, 16)
+	var hero_bar := Rect2(650, 370, 220, 16)
 	draw_rect(hero_bar, Color("20303b"), true)
 	var hero_ratio := float(run.player_hp) / float(max(1, run.max_hp))
 	draw_rect(Rect2(hero_bar.position, Vector2(hero_bar.size.x * hero_ratio, hero_bar.size.y)), Color("57a8d9"), true)
@@ -322,7 +356,7 @@ func draw_battle() -> void:
 
 	if feedback_time > 0.0 and last_played != "":
 		var alpha := clamp(feedback_time / 0.75, 0.0, 1.0)
-		var y := 265.0 - (1.0 - alpha) * 30.0
+		var y := 245.0 - (1.0 - alpha) * 30.0
 		var text := "%s" % last_played
 		if last_damage > 0: text += "  -%d" % last_damage
 		draw_string(ThemeDB.fallback_font, Vector2(390, y), text, HORIZONTAL_ALIGNMENT_CENTER, 180, 22, Color(1.0, 0.9, 0.45, alpha))
