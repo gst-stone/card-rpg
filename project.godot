@@ -1,6 +1,6 @@
 [application]
-config/name="Card RPG"
-run/main_scene="res://scenes/main.tscn"
+config/name="My Little Shop"
+run/main_scene="res://scenes/shop.tscn"
 
 [display]
 window/size/viewport_width=960
@@ -9,16 +9,10 @@ window/size/window_width_override=960
 window/size/window_height_override=540
 window/stretch/mode="canvas_items"
 
-[debug]
-gdscript/warnings/untyped_declaration=1
-
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/default_filters/use_nearest_mipmap_filter=false
 
-[input]
-map={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":77)]}
-back={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":66)]}
-end_turn={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":69)]}
-new_run={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":82)]}
+[debug]
+gdscript/warnings/untyped_declaration=1
