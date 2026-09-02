@@ -1,95 +1,99 @@
-# Card RPG
+# My Little Shop 🏪
 
-A Godot 4 roguelike deck-building prototype.
+A small **shop-management game prototype** built with Godot 4.x.
 
-## Current features
+The project started as a card-RPG prototype and has now been redirected into a simple, expandable management game. The current goal is to prove the core loop first, then gradually add more depth, content and better presentation.
 
-- Main menu and run persistence
-- Seven-floor branching adventure map
-- Battle / Elite / Shop / Event / Rest / Boss nodes
-- Three choices per normal map row
-- Guaranteed event, rest, shop and elite opportunities on the middle route
-- Turn-based combat with draw/discard piles
-- Energy system and card costs
-- Expanded reward pool with attack, defense, draw, healing, debuff and poison archetypes
-- Card block and healing effects
-- Relics: Guardian Core / Iron Ring / Lucky Coin / War Drum / Vampire Fang
-- Six normal enemy archetypes plus dedicated elite encounters
-- Scaling enemies and dedicated boss encounters
-- Gold economy and shop purchases
-- Random shrine events
-- Rest node healing
-- Victory / defeat states
-- JSON-compatible persistent run data
+## Current gameplay
+
+**Buy stock → open the shop → customers arrive → products sell → earn gold/XP → expand → unlock products → repeat.**
+
+### v0.2 features
+
+- Shop management screen
+- 8 products with different costs and demand weights
+- Inventory / restocking system
+- Automatic customer arrivals
+- Customer capacity
+- Lost customers when the shop is crowded or stock is unavailable
+- Product demand weighting
+- Daily market demand changes
+- Adjustable selling-price multiplier
+- Revenue and profit feedback
+- Shop XP and level progression
+- Product unlocks by shop level
+- Shop expansion increases customer capacity
+- Daily cycle
+- Mouse and keyboard controls
+- Lightweight procedural UI with no external assets required
+
+## Products
+
+| Product | Cost | Base price | Unlock |
+|---|---:|---:|---:|
+| Water | 2g | 4g | Lv.1 |
+| Bread | 3g | 6g | Lv.1 |
+| Apple | 4g | 8g | Lv.1 |
+| Drink | 5g | 10g | Lv.2 |
+| Noodles | 6g | 12g | Lv.2 |
+| Milk | 8g | 16g | Lv.3 |
+| Cookie | 10g | 20g | Lv.4 |
+| Hotpot | 20g | 40g | Lv.5 |
 
 ## Controls
 
-### Map
-- `1` - `5`: choose a map node
-- `R`: start a new run
+- **Mouse**: click management buttons and products
+- **Space**: open / close shop
+- **1-8**: restock products
+- **N**: start next day
+- **- / +**: decrease / increase selling price
+- **U**: expand the shop
+- **R**: restart the current scene
 
-### Battle
-- `1` / `2` / `3` / `4` / `5`: play a card in hand
-- `E`: end turn
+## How to play
 
-### Reward
-- `1` / `2` / `3`: choose a card
-- `B`: skip reward
+1. Restock several low-cost products.
+2. Adjust the price if you want a higher margin or more attractive prices.
+3. Open the shop.
+4. Watch customers arrive and buy products automatically.
+5. Close the shop when shelves are running low.
+6. Restock and expand when you have enough gold.
+7. Start the next day and react to the new market conditions.
 
-### Shop
-- `1` / `2` / `3`: buy an item
-- `4`: upgrade a card
-- `5`: remove a card
-- `B`: return to map
+## Development direction
 
-### Event / Rest
-- `1` / `2`: choose an event
-- `1`: rest
-- `B`: return to map
+The game is intentionally small at this stage. The next layers will focus on making the management decisions more meaningful rather than immediately adding a large amount of content.
 
-### Boss
-- `1` / `2` / `3` / `4` / `5`: play a card
-- `E`: boss turn
-- `B`: finish after victory
+Planned systems:
 
-Open the project with Godot 4.x and run `scenes/main.tscn`.
+- Customer types and individual preferences
+- Product popularity and demand curves
+- Supplier / purchasing decisions
+- Shelf capacity and store layout
+- Multiple shop areas
+- Staff hiring and scheduling
+- Daily goals and events
+- Better progression and balancing
+- Save/load for the shop-management mode
+- Mobile / WeChat mini-game friendly controls
+- Production art and sound
 
-## Presentation layer
+## Technical
 
-- Clickable card UI
-- Card hover lift effect
-- Enemy and hero HP bars
-- Combat damage feedback
-- Mouse-clickable map nodes and end-turn button
-- Animated procedural hero and enemy visuals
-- Attack flash and floating damage numbers
-- Fireball projectile visual effect
-- Ice Lance projectile visual effect
-- Card type visual styles and colored borders
-- Attack / skill / power / status labels
-- Production asset folder structure for art and audio
-- Central visual theme API
-- Replaceable character art layer
-- Layered dark-fantasy background and framed panels
-- Audio manager interface ready for SFX assets
-
-## Vertical slice status
-
-The repository contains a complete playable vertical slice: map routing, normal and elite battles, card combat, rewards, upgrades/removal, shops, events, rest, relics, multi-phase bosses, persistence and presentation feedback are all wired together.
-
-## Phase 3 — Content expansion complete
-
-Phase 3 increases replayability without introducing external dependencies:
-
-- Reward pool expanded from 10 to 18 base cards
-- Added Quick Jab / Fortify / Poison Dart / Cleave / Siphon / Adrenaline / Shatter / Riposte, each with an upgrade path
-- Added Plague Witch / Blood Hound / Stone Warden enemy archetypes
-- Enemy intent patterns now cover poison, guard and weakening behaviors across the expanded roster
-- Existing relic and combat systems remain compatible with the new content
-- Save format remains JSON-compatible and backward compatible
-
-The next development layer can focus on production art/audio, richer boss mechanics, balance telemetry and a larger event/relic pool.
+- Engine: **Godot 4.x**
+- Current viewport: **960 × 540**
+- No third-party runtime dependencies
+- Current shop scene: `scenes/shop.tscn`
+- Current shop logic: `scripts/shop_game_v2.gd`
 
 ## Run
 
 Open the project with Godot 4.x and run the configured main scene.
+
+If you want to test the shop scene directly, open `scenes/shop.tscn` and run it.
+
+## Project status
+
+**Prototype / MVP in active development.**
+
+The priority is to make the basic shop loop fun and understandable before investing heavily in art, monetization or platform-specific integration.
