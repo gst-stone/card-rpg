@@ -1,17 +1,19 @@
 extends Node2D
 
-# My Little Shop v1.0 - complete playable management prototype.
+# My Little Shop v1.0 — final playable management prototype.
+# Keyboard: SPACE open/close, N next day, 1-8 restock, +/- price, U supplier,
+# H staff, E expand, D dashboard, M missions, F5 save, F9 load, F10 reset.
 const SAVE_PATH := "user://my_little_shop_v1.json"
-const VERSION := "1.0"
+const VERSION := "1.0.0"
 const PRODUCTS := [
  {"name":"Water","cost":2,"price":4,"unlock":1,"pref":"daily","pop":1.0},
  {"name":"Bread","cost":3,"price":6,"unlock":1,"pref":"daily","pop":0.95},
- {"name":"Apple","cost":4,"price":8,"unlock":1,"pref":"healthy","pop":0.8},
+ {"name":"Apple","cost":4,"price":8,"unlock":1,"pref":"healthy","pop":0.80},
  {"name":"Drink","cost":5,"price":10,"unlock":2,"pref":"snack","pop":0.75},
- {"name":"Noodles","cost":6,"price":12,"unlock":2,"pref":"quick","pop":0.7},
- {"name":"Milk","cost":8,"price":16,"unlock":3,"pref":"healthy","pop":0.6},
+ {"name":"Noodles","cost":6,"price":12,"unlock":2,"pref":"quick","pop":0.70},
+ {"name":"Milk","cost":8,"price":16,"unlock":3,"pref":"healthy","pop":0.60},
  {"name":"Cookie","cost":10,"price":20,"unlock":4,"pref":"snack","pop":0.52},
- {"name":"Hotpot","cost":20,"price":40,"unlock":5,"pref":"quick","pop":0.4}
+ {"name":"Hotpot","cost":20,"price":40,"unlock":5,"pref":"quick","pop":0.40}
 ]
 const CUSTOMER_TYPES := [
  {"name":"Worker","icon":"W","pref":"quick","budget":18,"patience":8.0},
@@ -20,16 +22,16 @@ const CUSTOMER_TYPES := [
  {"name":"Neighbor","icon":"N","pref":"daily","budget":12,"patience":8.5}
 ]
 const SUPPLIERS := [
- {"name":"Local","discount":1.0,"label":"stable"},
- {"name":"Wholesale","discount":0.88,"label":"-12%"},
- {"name":"Premium","discount":1.08,"label":"+8% preference"}
+ {"name":"Local","discount":1.00,"label":"stable"},
+ {"name":"Wholesale","discount":0.88,"label":"-12% cost"},
+ {"name":"Premium","discount":1.08,"label":"+12% match"}
 ]
 const EVENTS := ["Normal market","Rainy day","Weekend rush","Local festival","Supplier sale","Heat wave"]
 const MISSIONS := [
  {"name":"First Sale","text":"Serve 5 customers","target":5,"reward":50},
  {"name":"Busy Shop","text":"Serve 25 customers","target":25,"reward":100},
  {"name":"Popular Store","text":"Reach 70 reputation","target":70,"reward":150},
- {"name":"Big Day","text":"Make 150g revenue in one day","target":150,"reward":120}
+ {"name":"Big Day","text":"Make 150g in one day","target":150,"reward":120}
 ]
 
 var gold := 100
@@ -60,7 +62,11 @@ var lifetime_served := 0
 var lifetime_days := 0
 var best_day_revenue := 0
 var settlement_visible := false
-var message := "Stock your shelves, then open the shop."
+var dashboard_visible := false
+var missions_visible := false
+var tutorial_step := 0
+var bankrupt := false
+var message := "Welcome! Stock your shelves, then open the shop."
 var feedback: Array[Dictionary] = []
 var mission_done: Array[bool] = [false,false,false,false]
 var toast := ""
@@ -69,23 +75,25 @@ var toast_time := 0.0
 func _ready() -> void:
  randomize()
  load_game()
+ if lifetime_days == 0 and lifetime_served == 0:
+  tutorial_step = 1
  queue_redraw()
 
 func _process(delta: float) -> void:
  toast_time = max(0.0, toast_time - delta)
  for f in feedback:
   f.life -= delta
-  f.pos.y -= delta * 26.0
+  f.pos.y -= delta * 25.0
  feedback = feedback.filter(func(f): return f.life > 0.0)
- if open and not settlement_visible:
+ if open and not settlement_visible and not bankrupt and not dashboard_visible and not missions_visible:
   spawn_timer -= delta
   if spawn_timer <= 0.0:
-   spawn_timer = max(0.65, 2.5 - level * 0.12 - staff * 0.22)
+   spawn_timer = max(0.65, 2.45 - level * 0.12 - staff * 0.20)
    add_customer()
   for c in waiting:
    c.patience -= delta
-   var target := Vector2(150.0 + float(c.slot % 5) * 82.0, 155.0 + float(c.slot / 5) * 72.0)
-   c.pos = c.pos.move_toward(target, delta * (110.0 + staff * 14.0))
+   var target := Vector2(95.0 + float(c.slot % 5) * 105.0, 165.0 + float(c.slot / 5) * 75.0)
+   c.pos = c.pos.move_toward(target, delta * (105.0 + staff * 14.0))
   var before := waiting.size()
   waiting = waiting.filter(func(c): return c.patience > 0.0)
   if before > waiting.size():
@@ -95,7 +103,7 @@ func _process(delta: float) -> void:
    add_feedback("-%d lost" % n, Vector2(300,180))
   sale_timer -= delta
   if sale_timer <= 0.0 and not waiting.is_empty():
-   sale_timer = max(0.32, 0.62 - staff * 0.035)
+   sale_timer = max(0.30, 0.60 - staff * 0.035)
    serve_customer()
  queue_redraw()
 
@@ -104,7 +112,7 @@ func add_customer() -> void:
  if waiting.size() >= limit:
   lost += 1
   reputation = max(0, reputation - 1)
-  show_toast("Crowded! Customer leaves.")
+  show_toast("Crowded — customer leaves")
   return
  var c: Dictionary = CUSTOMER_TYPES[randi() % CUSTOMER_TYPES.size()].duplicate()
  c.slot = waiting.size()
@@ -148,8 +156,9 @@ func serve_customer() -> void:
  lifetime_served += 1
  xp += profit
  reputation = min(100, reputation + 1)
- add_feedback("+%dg" % sell, Vector2(535,285))
- message = "%s bought %s" % [customer.name,p.name]
+ add_feedback("+%dg" % sell, Vector2(520,285))
+ message = "%s bought %s" % [customer.name, p.name]
+ if tutorial_step == 3: tutorial_step = 4
  check_level()
  check_missions()
 
@@ -159,7 +168,7 @@ func check_level() -> void:
   level += 1
   shelf_limit += 4
   shelf_count += 1
-  show_toast("LEVEL %d! New shelf space." % level)
+  show_toast("LEVEL %d! +4 shelf capacity" % level)
 
 func stock_total() -> int:
  var n := 0
@@ -167,55 +176,57 @@ func stock_total() -> int:
  return n
 
 func restock(i: int, qty := 5) -> void:
- if open or settlement_visible or i < 0 or i >= PRODUCTS.size(): return
+ if open or settlement_visible or bankrupt or dashboard_visible or missions_visible or i < 0 or i >= PRODUCTS.size(): return
  if int(PRODUCTS[i].unlock) > level:
-  show_toast("Unlocks at level %d." % PRODUCTS[i].unlock)
+  show_toast("Unlocks at level %d" % PRODUCTS[i].unlock)
   return
  qty = min(qty, shelf_limit - stock_total())
  if qty <= 0:
-  show_toast("Shelves are full.")
+  show_toast("Shelves are full")
   return
  var unit := int(round(float(PRODUCTS[i].cost) * float(SUPPLIERS[supplier].discount)))
  var total := unit * qty
  if gold < total:
-  show_toast("Need %dg." % total)
+  show_toast("Need %dg" % total)
   return
  gold -= total
  stock[i] += qty
- message = "Bought %d %s for %dg." % [qty,PRODUCTS[i].name,total]
+ message = "Bought %d %s for %dg" % [qty, PRODUCTS[i].name, total]
+ if tutorial_step == 1: tutorial_step = 2
  save_game()
 
 func choose_supplier() -> void:
- if open or settlement_visible: return
+ if open or settlement_visible or bankrupt: return
  supplier = (supplier + 1) % SUPPLIERS.size()
- message = "Supplier: %s (%s)" % [SUPPLIERS[supplier].name,SUPPLIERS[supplier].label]
+ message = "Supplier: %s (%s)" % [SUPPLIERS[supplier].name, SUPPLIERS[supplier].label]
+ save_game()
 
 func hire_staff() -> void:
- if open or settlement_visible: return
+ if open or settlement_visible or bankrupt: return
  var price := 80 + staff * 60
  if gold < price:
-  show_toast("Hiring costs %dg." % price)
+  show_toast("Hiring costs %dg" % price)
   return
  gold -= price
  staff += 1
- message = "Staff %d hired." % staff
+ message = "Staff %d hired" % staff
  save_game()
 
 func expand_store() -> void:
- if open or settlement_visible: return
+ if open or settlement_visible or bankrupt: return
  var price := level * 100
  if gold < price:
-  show_toast("Expansion costs %dg." % price)
+  show_toast("Expansion costs %dg" % price)
   return
  gold -= price
  shelf_limit += 8
  shelf_count += 1
- message = "Store expanded to %d capacity." % shelf_limit
+ message = "Store expanded to %d capacity" % shelf_limit
  save_game()
 
 func change_price(step: float) -> void:
- if open or settlement_visible: return
- price_factor = clamp(price_factor + step,0.75,1.35)
+ if open or settlement_visible or bankrupt: return
+ price_factor = clamp(price_factor + step, 0.75, 1.35)
  message = "Selling price: %d%%" % int(price_factor * 100.0)
  save_game()
 
@@ -231,18 +242,22 @@ func generate_event() -> void:
   "Heat wave": event_demand_bonus = 0.96
 
 func toggle_shop() -> void:
- if settlement_visible: return
+ if settlement_visible or bankrupt or dashboard_visible or missions_visible: return
  open = not open
  if open:
   spawn_timer = 0.25
   message = "SHOP OPEN • %s" % event_text
+  if tutorial_step == 2: tutorial_step = 3
  else:
   waiting.clear()
-  message = "Shop closed. Settle the day."
+  message = "Shop closed — settle the day"
   save_game()
 
 func next_day() -> void:
- if open: show_toast("Close the shop first."); return
+ if bankrupt: return
+ if open:
+  show_toast("Close the shop first")
+  return
  if not settlement_visible:
   finish_day()
  else:
@@ -252,25 +267,31 @@ func next_day() -> void:
   lost = 0
   revenue = 0
   cost_today = 0
-  demand = randf_range(0.82,1.18)
-  price_factor = clamp(price_factor + randf_range(-0.05,0.05),0.75,1.35)
+  demand = randf_range(0.82, 1.18)
+  price_factor = clamp(price_factor + randf_range(-0.05, 0.05), 0.75, 1.35)
   generate_event()
-  message = "Day %d • %s" % [day,event_text]
+  message = "Day %d • %s" % [day, event_text]
   save_game()
 
 func finish_day() -> void:
  var expense := 10 + staff * (20 + staff * 5)
  cost_today = expense
  gold -= expense
- best_day_revenue = max(best_day_revenue,revenue)
+ best_day_revenue = max(best_day_revenue, revenue)
  lifetime_days += 1
  settlement_visible = true
- message = "Day %d complete. Profit %dg." % [day,revenue-expense]
+ open = false
+ message = "Day %d complete • Profit %dg" % [day, revenue - expense]
+ if tutorial_step == 4: tutorial_step = 0
  check_missions()
+ if gold < 0:
+  bankrupt = true
+  gold = 0
+  settlement_visible = false
+  message = "The shop ran out of cash. Restart and try a leaner strategy."
  save_game()
 
 func check_missions() -> void:
- var values := [lifetime_served,reputation,best_day_revenue]
  for i in MISSIONS.size():
   if mission_done[i]: continue
   var target := int(MISSIONS[i].target)
@@ -284,6 +305,11 @@ func check_missions() -> void:
    gold += int(MISSIONS[i].reward)
    show_toast("Mission complete +%dg" % MISSIONS[i].reward)
 
+func mission_progress(i: int) -> int:
+ if i == 0 or i == 1: return lifetime_served
+ if i == 2: return reputation
+ return best_day_revenue
+
 func show_toast(t: String) -> void:
  toast = t
  toast_time = 2.0
@@ -293,25 +319,30 @@ func add_feedback(text: String, at: Vector2) -> void:
  feedback.append({"text":text,"pos":at,"life":1.1})
 
 func save_game() -> void:
- var data := {"version":VERSION,"gold":gold,"level":level,"xp":xp,"day":day,"stock":stock,"shelf_limit":shelf_limit,"shelf_count":shelf_count,"reputation":reputation,"staff":staff,"supplier":supplier,"price_factor":price_factor,"demand":demand,"event_text":event_text,"event_demand_bonus":event_demand_bonus,"event_profit_bonus":event_profit_bonus,"served":served,"lost":lost,"revenue":revenue,"cost_today":cost_today,"lifetime_revenue":lifetime_revenue,"lifetime_served":lifetime_served,"lifetime_days":lifetime_days,"best_day_revenue":best_day_revenue,"mission_done":mission_done}
- var f := FileAccess.open(SAVE_PATH,FileAccess.WRITE)
+ var data := {"version":VERSION,"gold":gold,"level":level,"xp":xp,"day":day,"stock":stock,"shelf_limit":shelf_limit,"shelf_count":shelf_count,"reputation":reputation,"staff":staff,"supplier":supplier,"price_factor":price_factor,"demand":demand,"event_text":event_text,"event_demand_bonus":event_demand_bonus,"event_profit_bonus":event_profit_bonus,"served":served,"lost":lost,"revenue":revenue,"cost_today":cost_today,"lifetime_revenue":lifetime_revenue,"lifetime_served":lifetime_served,"lifetime_days":lifetime_days,"best_day_revenue":best_day_revenue,"mission_done":mission_done,"tutorial_step":tutorial_step}
+ var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
  if f: f.store_string(JSON.stringify(data))
 
 func load_game() -> void:
  if not FileAccess.file_exists(SAVE_PATH): return
- var f := FileAccess.open(SAVE_PATH,FileAccess.READ)
+ var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
  if not f: return
  var d = JSON.parse_string(f.get_as_text())
  if typeof(d) != TYPE_DICTIONARY: return
- gold=int(d.get("gold",gold)); level=int(d.get("level",level)); xp=int(d.get("xp",xp)); day=int(d.get("day",day))
- var s=d.get("stock",stock)
- if typeof(s)==TYPE_ARRAY:
-  for i in min(s.size(),stock.size()): stock[i]=int(s[i])
- shelf_limit=int(d.get("shelf_limit",shelf_limit)); shelf_count=int(d.get("shelf_count",shelf_count)); reputation=int(d.get("reputation",reputation)); staff=int(d.get("staff",staff)); supplier=int(d.get("supplier",supplier)); price_factor=float(d.get("price_factor",price_factor)); demand=float(d.get("demand",demand)); event_text=str(d.get("event_text",event_text)); event_demand_bonus=float(d.get("event_demand_bonus",event_demand_bonus)); event_profit_bonus=float(d.get("event_profit_bonus",event_profit_bonus)); served=int(d.get("served",served)); lost=int(d.get("lost",lost)); revenue=int(d.get("revenue",revenue)); cost_today=int(d.get("cost_today",cost_today)); lifetime_revenue=int(d.get("lifetime_revenue",lifetime_revenue)); lifetime_served=int(d.get("lifetime_served",lifetime_served)); lifetime_days=int(d.get("lifetime_days",lifetime_days)); best_day_revenue=int(d.get("best_day_revenue",best_day_revenue))
- var md=d.get("mission_done",mission_done)
- if typeof(md)==TYPE_ARRAY:
-  for i in min(md.size(),mission_done.size()): mission_done[i]=bool(md[i])
- message="Save loaded • Day %d" % day
+ gold = int(d.get("gold", gold)); level = int(d.get("level", level)); xp = int(d.get("xp", xp)); day = int(d.get("day", day))
+ var s = d.get("stock", stock)
+ if typeof(s) == TYPE_ARRAY:
+  for i in min(s.size(), stock.size()): stock[i] = max(0, int(s[i]))
+ shelf_limit = max(24, int(d.get("shelf_limit", shelf_limit))); shelf_count = max(3, int(d.get("shelf_count", shelf_count)))
+ reputation = clamp(int(d.get("reputation", reputation)), 0, 100); staff = max(0, int(d.get("staff", staff))); supplier = clamp(int(d.get("supplier", supplier)), 0, SUPPLIERS.size() - 1)
+ price_factor = clamp(float(d.get("price_factor", price_factor)), 0.75, 1.35); demand = float(d.get("demand", demand)); event_text = str(d.get("event_text", event_text)); event_demand_bonus = float(d.get("event_demand_bonus", event_demand_bonus)); event_profit_bonus = float(d.get("event_profit_bonus", event_profit_bonus))
+ served = max(0, int(d.get("served", served))); lost = max(0, int(d.get("lost", lost))); revenue = max(0, int(d.get("revenue", revenue))); cost_today = max(0, int(d.get("cost_today", cost_today)))
+ lifetime_revenue = max(0, int(d.get("lifetime_revenue", lifetime_revenue))); lifetime_served = max(0, int(d.get("lifetime_served", lifetime_served))); lifetime_days = max(0, int(d.get("lifetime_days", lifetime_days))); best_day_revenue = max(0, int(d.get("best_day_revenue", best_day_revenue)))
+ var md = d.get("mission_done", mission_done)
+ if typeof(md) == TYPE_ARRAY:
+  for i in min(md.size(), mission_done.size()): mission_done[i] = bool(md[i])
+ tutorial_step = int(d.get("tutorial_step", tutorial_step))
+ message = "Save loaded • Day %d" % day
 
 func reset_save() -> void:
  if FileAccess.file_exists(SAVE_PATH): DirAccess.remove_absolute(SAVE_PATH)
@@ -319,99 +350,147 @@ func reset_save() -> void:
 
 func _input(e: InputEvent) -> void:
  if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
-  var p:=e.position
+  var p := e.position
+  if bankrupt:
+   if Rect2(705,455,220,55).has_point(p): reset_save()
+   return
   if settlement_visible:
    if Rect2(705,455,220,55).has_point(p): next_day()
    return
+  if dashboard_visible:
+   if Rect2(705,515,220,45).has_point(p): dashboard_visible = false
+   return
+  if missions_visible:
+   if Rect2(705,515,220,45).has_point(p): missions_visible = false
+   return
   if Rect2(705,120,220,50).has_point(p): toggle_shop(); return
   if Rect2(705,180,220,42).has_point(p): next_day(); return
+  if Rect2(705,230,105,42).has_point(p): dashboard_visible = true; return
+  if Rect2(815,230,110,42).has_point(p): missions_visible = true; return
   if Rect2(705,295,100,42).has_point(p): change_price(-0.05); return
   if Rect2(815,295,110,42).has_point(p): change_price(0.05); return
   if Rect2(705,345,220,42).has_point(p): choose_supplier(); return
   if Rect2(705,395,220,42).has_point(p): hire_staff(); return
   if Rect2(705,445,220,42).has_point(p): expand_store(); return
   for i in PRODUCTS.size():
-   if Rect2(35+(i%4)*165,365+(i/4)*65,155,55).has_point(p): restock(i); return
+   if Rect2(35+(i%4)*165,385+(i/4)*65,155,55).has_point(p): restock(i); return
  if e is InputEventKey and e.pressed and not e.echo:
   match e.keycode:
    KEY_SPACE: toggle_shop()
    KEY_N: next_day()
-   KEY_S: choose_supplier()
-   KEY_H: hire_staff()
-   KEY_U: expand_store()
+   KEY_D: dashboard_visible = not dashboard_visible
+   KEY_M: missions_visible = not missions_visible
    KEY_MINUS: change_price(-0.05)
-   KEY_EQUAL,KEY_PLUS: change_price(0.05)
-   KEY_F5: save_game(); show_toast("Game saved")
-   KEY_F9: load_game(); show_toast("Game loaded")
+   KEY_EQUAL, KEY_PLUS: change_price(0.05)
+   KEY_U: choose_supplier()
+   KEY_H: hire_staff()
+   KEY_E: expand_store()
+   KEY_F5: save_game(); show_toast("Saved")
+   KEY_F9: load_game(); show_toast("Loaded")
    KEY_F10: reset_save()
-   KEY_1,KEY_2,KEY_3,KEY_4,KEY_5,KEY_6,KEY_7,KEY_8: restock(e.keycode-KEY_1)
+   KEY_1: restock(0)
+   KEY_2: restock(1)
+   KEY_3: restock(2)
+   KEY_4: restock(3)
+   KEY_5: restock(4)
+   KEY_6: restock(5)
+   KEY_7: restock(6)
+   KEY_8: restock(7)
 
-func draw_button(r:Rect2,t:String,active:=true) -> void:
- draw_rect(r,Color("4f8a62") if active else Color("9aa3aa"),true)
- draw_string(ThemeDB.fallback_font,r.position+Vector2(12,r.size.y*0.67),t,HORIZONTAL_ALIGNMENT_LEFT,r.size.x-24,16,Color.WHITE)
+func panel(rect: Rect2, title: String) -> void:
+ draw_rect(rect, Color("18202a"), true)
+ draw_rect(rect, Color("526273"), false, 2.0)
+ draw_string(ThemeDB.fallback_font, rect.position + Vector2(16,26), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("f2f5f7"))
+
+func button(rect: Rect2, text: String, active := false) -> void:
+ draw_rect(rect, Color("314457") if active else Color("263442"), true)
+ draw_rect(rect, Color("7890a5"), false, 1.0)
+ draw_string(ThemeDB.fallback_font, rect.get_center() + Vector2(0,6), text, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 12, 15, Color("ffffff"))
 
 func _draw() -> void:
- draw_rect(Rect2(0,0,960,540),Color("e9edf0"),true)
- draw_rect(Rect2(0,0,960,72),Color("243447"),true)
- draw_string(ThemeDB.fallback_font,Vector2(24,43),"MY LITTLE SHOP",HORIZONTAL_ALIGNMENT_LEFT,-1,26,Color.WHITE)
- draw_string(ThemeDB.fallback_font,Vector2(300,37),"DAY %d • LV.%d" % [day,level],HORIZONTAL_ALIGNMENT_LEFT,-1,17,Color("dbe7f2"))
- draw_string(ThemeDB.fallback_font,Vector2(300,59),"XP %d/%d  REP %d  STAFF %d" % [xp,level*45,reputation,staff],HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("b8cadb"))
- draw_string(ThemeDB.fallback_font,Vector2(815,43),"%dg" % gold,HORIZONTAL_ALIGNMENT_LEFT,-1,23,Color("f4d35e"))
- draw_rect(Rect2(20,88,660,250),Color("f8f4ed"),true)
- draw_rect(Rect2(20,88,660,10),Color("c8a77d"),true)
- draw_string(ThemeDB.fallback_font,Vector2(40,122),"STORE FLOOR",HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color("695747"))
- for s in shelf_count:
-  var sx:=40.0+float(s%2)*300.0
-  var sy:=135.0+float(s/2)*70.0
-  draw_rect(Rect2(sx,sy,250,55),Color("e2d2bb"),true)
-  draw_rect(Rect2(sx+7,sy+7,236,41),Color("fffaf1"),true)
-  var a:=(s*2)%PRODUCTS.size()
-  draw_string(ThemeDB.fallback_font,Vector2(sx+16,sy+27),PRODUCTS[a].name+"  "+str(stock[a]),HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("51463c"))
-  if a+1<PRODUCTS.size(): draw_string(ThemeDB.fallback_font,Vector2(sx+135,sy+27),PRODUCTS[a+1].name+"  "+str(stock[a+1]),HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("51463c"))
- draw_rect(Rect2(520,288,130,30),Color("9a7650"),true)
- draw_string(ThemeDB.fallback_font,Vector2(540,309),"CHECKOUT",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color.WHITE)
- draw_rect(Rect2(40,305,90,25),Color("7aa6c2"),true)
- draw_string(ThemeDB.fallback_font,Vector2(52,322),"ENTRANCE",HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color.WHITE)
- for c in waiting:
-  draw_circle(c.pos,12,Color("e0a37e"))
-  draw_rect(Rect2(c.pos.x-13,c.pos.y+10,26,24),Color("6c8db5"),true)
-  draw_string(ThemeDB.fallback_font,c.pos+Vector2(-5,5),c.icon,HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color.WHITE)
- for f in feedback:
-  draw_string(ThemeDB.fallback_font,f.pos,f.text,HORIZONTAL_ALIGNMENT_LEFT,-1,15,Color("3f7654"))
- draw_rect(Rect2(700,88,240,397),Color.WHITE,true)
- draw_string(ThemeDB.fallback_font,Vector2(720,113),"MANAGEMENT",HORIZONTAL_ALIGNMENT_LEFT,-1,17,Color("526170"))
- draw_button(Rect2(705,120,220,50),"CLOSE SHOP" if open else "OPEN SHOP",true)
- draw_button(Rect2(705,180,220,42),"NEXT DAY [N]")
- draw_string(ThemeDB.fallback_font,Vector2(705,248),"Stock %d/%d" % [stock_total(),shelf_limit],HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("4d5965"))
- draw_string(ThemeDB.fallback_font,Vector2(705,269),"Revenue %dg • Lost %d" % [revenue,lost],HORIZONTAL_ALIGNMENT_LEFT,-1,13,Color("4d5965"))
- draw_button(Rect2(705,295,100,42),"PRICE -")
- draw_button(Rect2(815,295,110,42),"PRICE +")
- draw_string(ThemeDB.fallback_font,Vector2(705,288),"Price %d%%" % int(price_factor*100.0),HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("526170"))
- draw_button(Rect2(705,345,220,42),"SUPPLIER: "+SUPPLIERS[supplier].name)
- draw_button(Rect2(705,395,220,42),"HIRE STAFF [H]")
- draw_button(Rect2(705,445,220,42),"EXPAND [U]")
+ draw_rect(Rect2(0,0,960,600), Color("0d131a"), true)
+ draw_rect(Rect2(0,0,960,72), Color("17222d"), true)
+ draw_string(ThemeDB.fallback_font, Vector2(28,34), "MY LITTLE SHOP", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color("ffffff"))
+ draw_string(ThemeDB.fallback_font, Vector2(28,58), "Day %d  •  Level %d  •  %s" % [day,level,event_text], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("aebdca"))
+ draw_string(ThemeDB.fallback_font, Vector2(690,32), "%dg" % gold, HORIZONTAL_ALIGNMENT_RIGHT, 235, 24, Color("f5d77a"))
+ draw_string(ThemeDB.fallback_font, Vector2(690,55), "Rep %d   XP %d/%d" % [reputation,xp,level*45], HORIZONTAL_ALIGNMENT_RIGHT, 235, 14, Color("b9c7d2"))
+ panel(Rect2(25,90,650,255), "SHOP FLOOR")
+ draw_string(ThemeDB.fallback_font, Vector2(42,120), "Queue: %d/%d    Served today: %d    Lost: %d" % [waiting.size(),min(12,4+level+staff),served,lost], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("d6e0e7"))
+ for i in waiting.size():
+  var c: Dictionary = waiting[i]
+  var pos: Vector2 = c.pos
+  draw_circle(pos,22,Color("536d80"))
+  draw_string(ThemeDB.fallback_font,pos+Vector2(-6,6),str(c.icon),HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("ffffff"))
+  draw_string(ThemeDB.fallback_font,pos+Vector2(-25,39),str(c.name),HORIZONTAL_ALIGNMENT_CENTER,50,11,Color("c6d2db"))
+ draw_string(ThemeDB.fallback_font,Vector2(45,330),message,HORIZONTAL_ALIGNMENT_LEFT,620,14,Color("9fb1bf"))
+ panel(Rect2(690,90,245,425), "MANAGEMENT")
+ button(Rect2(705,120,220,50), "CLOSE SHOP" if open else "OPEN SHOP", open)
+ button(Rect2(705,180,220,42), "FINISH / NEXT DAY")
+ button(Rect2(705,230,105,42), "DASHBOARD")
+ button(Rect2(815,230,110,42), "MISSIONS")
+ button(Rect2(705,295,100,42), "PRICE -5%")
+ button(Rect2(815,295,110,42), "PRICE +5%")
+ button(Rect2(705,345,220,42), "SUPPLIER: %s" % SUPPLIERS[supplier].name)
+ button(Rect2(705,395,220,42), "HIRE STAFF (%dg)" % (80+staff*60))
+ button(Rect2(705,445,220,42), "EXPAND (%dg)" % (level*100))
+ draw_string(ThemeDB.fallback_font,Vector2(705,505),"Stock %d/%d   Staff %d" % [stock_total(),shelf_limit,staff],HORIZONTAL_ALIGNMENT_LEFT,220,13,Color("aebdca"))
+ panel(Rect2(25,350,650,225), "STOCK • click to buy 5")
  for i in PRODUCTS.size():
-  var r:=Rect2(35+(i%4)*165,365+(i/4)*65,155,55)
-  var unlocked:=int(PRODUCTS[i].unlock)<=level
-  draw_rect(r,Color("d8e2e7") if unlocked else Color("b7bdc2"),true)
-  draw_string(ThemeDB.fallback_font,r.position+Vector2(9,20),PRODUCTS[i].name,HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("26323a"))
-  draw_string(ThemeDB.fallback_font,r.position+Vector2(9,40),"%dg → %dg  [%d]" % [PRODUCTS[i].cost,round(PRODUCTS[i].price*price_factor),stock[i]],HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("526170"))
- draw_string(ThemeDB.fallback_font,Vector2(40,525),message,HORIZONTAL_ALIGNMENT_LEFT,620,14,Color("526170"))
- if toast_time>0.0:
-  draw_rect(Rect2(280,82,400,42),Color("33495b"),true)
-  draw_string(ThemeDB.fallback_font,Vector2(305,110),toast,HORIZONTAL_ALIGNMENT_LEFT,350,16,Color.WHITE)
- if settlement_visible: draw_settlement()
-
-func draw_settlement() -> void:
- draw_rect(Rect2(115,70,730,420),Color("17232d"),true)
- draw_string(ThemeDB.fallback_font,Vector2(165,125),"DAY %d SETTLEMENT" % day,HORIZONTAL_ALIGNMENT_LEFT,-1,28,Color.WHITE)
- draw_string(ThemeDB.fallback_font,Vector2(165,160),"Event: %s" % event_text,HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color("dbe7f2"))
- var profit:=revenue-cost_today
- draw_string(ThemeDB.fallback_font,Vector2(165,210),"Revenue       %d g" % revenue,HORIZONTAL_ALIGNMENT_LEFT,-1,19,Color("f4d35e"))
- draw_string(ThemeDB.fallback_font,Vector2(165,245),"Operating cost %d g" % cost_today,HORIZONTAL_ALIGNMENT_LEFT,-1,19,Color("e7b0a0"))
- draw_string(ThemeDB.fallback_font,Vector2(165,280),"DAY PROFIT    %d g" % profit,HORIZONTAL_ALIGNMENT_LEFT,-1,23,Color("9fe0ae"))
- draw_string(ThemeDB.fallback_font,Vector2(165,320),"Served %d    Lost %d    Reputation %d" % [served,lost,reputation],HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color("dbe7f2"))
- draw_string(ThemeDB.fallback_font,Vector2(165,355),"Lifetime: %d customers • %d g revenue" % [lifetime_served,lifetime_revenue],HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("b8cadb"))
- draw_string(ThemeDB.fallback_font,Vector2(165,392),"Next day will refresh demand and market event.",HORIZONTAL_ALIGNMENT_LEFT,-1,14,Color("b8cadb"))
- draw_button(Rect2(705,455,120,55),"NEXT DAY",true)
- draw_button(Rect2(830,455,0,55),"",false)
+  var p: Dictionary = PRODUCTS[i]
+  var r := Rect2(35+(i%4)*165,385+(i/4)*65,155,55)
+  var unlocked := int(p.unlock) <= level
+  draw_rect(r,Color("263b31") if unlocked else Color("20272e"),true)
+  draw_rect(r,Color("5f7869") if unlocked else Color("3c4650"),false,1.0)
+  draw_string(ThemeDB.fallback_font,r.position+Vector2(9,20),p.name,HORIZONTAL_ALIGNMENT_LEFT,90,14,Color("ffffff") if unlocked else Color("74808a"))
+  if unlocked:
+   var unit := int(round(float(p.cost)*float(SUPPLIERS[supplier].discount)))
+   draw_string(ThemeDB.fallback_font,r.position+Vector2(9,40),"%dg → %dg   ×%d" % [unit,int(round(float(p.price)*price_factor)),stock[i]],HORIZONTAL_ALIGNMENT_LEFT,145,12,Color("b9c7d2"))
+  else:
+   draw_string(ThemeDB.fallback_font,r.position+Vector2(9,40),"LOCK LV.%d" % p.unlock,HORIZONTAL_ALIGNMENT_LEFT,145,12,Color("7d8993"))
+ for f in feedback:
+  draw_string(ThemeDB.fallback_font,f.pos,f.text,HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("f5d77a"))
+ if toast_time > 0.0:
+  draw_rect(Rect2(250,75,460,38),Color("263442"),true)
+  draw_string(ThemeDB.fallback_font,Vector2(265,100),toast,HORIZONTAL_ALIGNMENT_CENTER,430,15,Color("ffffff"))
+ if tutorial_step > 0 and not dashboard_visible and not missions_visible and not settlement_visible:
+  draw_rect(Rect2(110,210,500,120),Color("101820"),true)
+  draw_rect(Rect2(110,210,500,120),Color("8aa0b2"),false,2.0)
+  var t := ""
+  match tutorial_step:
+   1: t = "1/4  FIRST STOCK\nClick a product below to buy stock."
+   2: t = "2/4  SET YOUR PRICE\nUse PRICE -5% / +5%, then OPEN SHOP."
+   3: t = "3/4  WATCH CUSTOMERS\nCustomers buy automatically. Keep shelves stocked."
+   4: t = "4/4  FINISH THE DAY\nClose the shop and press FINISH / NEXT DAY."
+  draw_multiline_string(ThemeDB.fallback_font,Vector2(135,245),t,HORIZONTAL_ALIGNMENT_LEFT,450,17,23,Color("ffffff"))
+ if settlement_visible:
+  panel(Rect2(170,145,620,355),"DAY %d SETTLEMENT" % day)
+  var profit := revenue-cost_today
+  draw_string(ThemeDB.fallback_font,Vector2(210,220),"Revenue",HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b9c7d2"))
+  draw_string(ThemeDB.fallback_font,Vector2(560,220),"%dg" % revenue,HORIZONTAL_ALIGNMENT_RIGHT,160,22,Color("f5d77a"))
+  draw_string(ThemeDB.fallback_font,Vector2(210,260),"Operating cost",HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b9c7d2"))
+  draw_string(ThemeDB.fallback_font,Vector2(560,260),"-%dg" % cost_today,HORIZONTAL_ALIGNMENT_RIGHT,160,22,Color("e8a5a5"))
+  draw_string(ThemeDB.fallback_font,Vector2(210,305),"Day profit",HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color("ffffff"))
+  draw_string(ThemeDB.fallback_font,Vector2(560,305),"%dg" % profit,HORIZONTAL_ALIGNMENT_RIGHT,160,24,Color("9fe0a8") if profit >= 0 else Color("e8a5a5"))
+  draw_string(ThemeDB.fallback_font,Vector2(210,345),"Served %d   Lost %d   Reputation %d" % [served,lost,reputation],HORIZONTAL_ALIGNMENT_LEFT,400,15,Color("b9c7d2"))
+  button(Rect2(705,455,220,55),"START NEXT DAY")
+ if dashboard_visible:
+  panel(Rect2(155,115,650,420),"BUSINESS DASHBOARD")
+  var rows := ["Lifetime revenue: %dg" % lifetime_revenue,"Customers served: %d" % lifetime_served,"Days completed: %d" % lifetime_days,"Best day revenue: %dg" % best_day_revenue,"Current reputation: %d/100" % reputation,"Store capacity: %d" % shelf_limit,"Current demand: %d%%" % int(demand*100.0),"Price level: %d%%" % int(price_factor*100.0)]
+  for i in rows.size():
+   draw_string(ThemeDB.fallback_font,Vector2(200,175+i*38),rows[i],HORIZONTAL_ALIGNMENT_LEFT,520,18,Color("d6e0e7"))
+  button(Rect2(365,515,220,45),"CLOSE DASHBOARD")
+ if missions_visible:
+  panel(Rect2(135,105,690,440),"MISSIONS & REWARDS")
+  for i in MISSIONS.size():
+   var m: Dictionary = MISSIONS[i]
+   var y := 165+i*78
+   var progress := min(mission_progress(i),int(m.target))
+   draw_string(ThemeDB.fallback_font,Vector2(175,y),("✓ " if mission_done[i] else "○ ")+str(m.name),HORIZONTAL_ALIGNMENT_LEFT,210,18,Color("9fe0a8") if mission_done[i] else Color("ffffff"))
+   draw_string(ThemeDB.fallback_font,Vector2(395,y),"%d/%d" % [progress,m.target],HORIZONTAL_ALIGNMENT_LEFT,100,16,Color("d6e0e7"))
+   draw_string(ThemeDB.fallback_font,Vector2(175,y+27),"%s   Reward %dg" % [m.text,m.reward],HORIZONTAL_ALIGNMENT_LEFT,500,13,Color("aebdca"))
+  button(Rect2(365,515,220,45),"CLOSE MISSIONS")
+ if bankrupt:
+  panel(Rect2(180,170,600,300),"SHOP CLOSED")
+  draw_string(ThemeDB.fallback_font,Vector2(225,255),"You ran out of cash.",HORIZONTAL_ALIGNMENT_LEFT,510,28,Color("e8a5a5"))
+  draw_multiline_string(ThemeDB.fallback_font,Vector2(225,295),"Try lower prices, wholesale supplies, and avoid\nexpanding or hiring before the shop is profitable.",HORIZONTAL_ALIGNMENT_LEFT,510,16,24,Color("c6d2db"))
+  button(Rect2(705,455,220,55),"RESTART GAME")
