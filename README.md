@@ -2,43 +2,53 @@
 
 A small **shop-management game prototype** built with Godot 4.x.
 
-The project started as a card-RPG prototype and has now been redirected into a simple, expandable management game. The current goal is to prove the core loop first, then gradually add more depth, content and better presentation.
+The project started as a card-RPG prototype and has been redirected into a lightweight management game designed to be easy to learn, expand and eventually adapt to mobile / WeChat mini-game controls.
 
 ## Current gameplay
 
-**Buy stock → open the shop → customers arrive → products sell → earn gold/XP → expand → unlock products → repeat.**
+**Buy stock → set prices → open the shop → customers with different needs arrive → sell → earn gold/XP → expand shelves → unlock products → repeat.**
 
-### v0.2 features
+### v0.3 features
 
-- Shop management screen
-- 8 products with different costs and demand weights
-- Inventory / restocking system
-- Automatic customer arrivals
-- Customer capacity
-- Lost customers when the shop is crowded or stock is unavailable
-- Product demand weighting
+- 8 products with different costs, prices and unlock levels
+- Limited shelf capacity
+- Restocking with capacity checks
+- 4 customer types: Worker, Parent, Student, Neighbor
+- Customer preferences: quick, healthy, snack and daily
+- Customer budgets affect which products they can buy
+- Customer patience and lost-customer tracking
+- Automatic customer arrivals and sales
 - Daily market demand changes
 - Adjustable selling-price multiplier
-- Revenue and profit feedback
+- Revenue, served and lost-customer statistics
 - Shop XP and level progression
-- Product unlocks by shop level
-- Shop expansion increases customer capacity
+- New products unlock as the shop grows
+- Expansion increases shelf capacity
 - Daily cycle
 - Mouse and keyboard controls
-- Lightweight procedural UI with no external assets required
+- Procedural UI with no external runtime assets
 
 ## Products
 
-| Product | Cost | Base price | Unlock |
-|---|---:|---:|---:|
-| Water | 2g | 4g | Lv.1 |
-| Bread | 3g | 6g | Lv.1 |
-| Apple | 4g | 8g | Lv.1 |
-| Drink | 5g | 10g | Lv.2 |
-| Noodles | 6g | 12g | Lv.2 |
-| Milk | 8g | 16g | Lv.3 |
-| Cookie | 10g | 20g | Lv.4 |
-| Hotpot | 20g | 40g | Lv.5 |
+| Product | Cost | Base price | Unlock | Preference |
+|---|---:|---:|---:|---|
+| Water | 2g | 4g | Lv.1 | daily |
+| Bread | 3g | 6g | Lv.1 | daily |
+| Apple | 4g | 8g | Lv.1 | healthy |
+| Drink | 5g | 10g | Lv.2 | snack |
+| Noodles | 6g | 12g | Lv.2 | quick |
+| Milk | 8g | 16g | Lv.3 | healthy |
+| Cookie | 10g | 20g | Lv.4 | snack |
+| Hotpot | 20g | 40g | Lv.5 | quick |
+
+## Customer types
+
+- **Worker** — prefers quick food and has a medium budget.
+- **Parent** — prefers healthy products and is more patient.
+- **Student** — prefers snacks and has a smaller budget.
+- **Neighbor** — prefers everyday essentials.
+
+Customers evaluate available products based on their preference, budget and the current market demand.
 
 ## Controls
 
@@ -47,53 +57,79 @@ The project started as a card-RPG prototype and has now been redirected into a s
 - **1-8**: restock products
 - **N**: start next day
 - **- / +**: decrease / increase selling price
-- **U**: expand the shop
-- **R**: restart the current scene
+- **U**: expand shelves
 
 ## How to play
 
-1. Restock several low-cost products.
-2. Adjust the price if you want a higher margin or more attractive prices.
-3. Open the shop.
-4. Watch customers arrive and buy products automatically.
-5. Close the shop when shelves are running low.
-6. Restock and expand when you have enough gold.
-7. Start the next day and react to the new market conditions.
+1. Restock products without filling every shelf with slow-moving goods.
+2. Set a reasonable price before opening.
+3. Open the shop and watch which customer types arrive.
+4. Keep popular products in stock.
+5. Avoid excessive prices because customers have limited budgets.
+6. Close the shop when you need to restock or change prices.
+7. Expand shelf capacity and unlock higher-value products.
+8. Start the next day and react to changing market demand.
 
-## Development direction
+## Development roadmap
 
-The game is intentionally small at this stage. The next layers will focus on making the management decisions more meaningful rather than immediately adding a large amount of content.
+### v0.3 — Customer simulation ✅
 
-Planned systems:
+Customer types, preferences, budgets, patience and shelf capacity are now implemented.
 
-- Customer types and individual preferences
-- Product popularity and demand curves
-- Supplier / purchasing decisions
-- Shelf capacity and store layout
-- Multiple shop areas
-- Staff hiring and scheduling
-- Daily goals and events
-- Better progression and balancing
-- Save/load for the shop-management mode
-- Mobile / WeChat mini-game friendly controls
-- Production art and sound
+### v0.4 — Store layout
+
+Planned next:
+
+- Place individual shelves
+- Different shelf capacities
+- Product display bonuses
+- Customer walking paths
+- Checkout counter
+- Small store layout decisions
+
+### v0.5 — Deeper management
+
+- Suppliers and purchase prices
+- Product popularity trends
+- Daily events
+- Staff hiring
+- Operating costs
+- Daily objectives
+
+### v0.6 — Game feel
+
+- Better pixel-art / illustrated UI
+- Character animations
+- Sound effects
+- More satisfying feedback
+- Save/load
+- Mobile-friendly touch UI
+
+### Later
+
+- Multiple stores
+- Store districts
+- Special events
+- Achievements
+- Optional ads / rewarded video
+- WeChat mini-game adaptation
 
 ## Technical
 
 - Engine: **Godot 4.x**
 - Current viewport: **960 × 540**
 - No third-party runtime dependencies
-- Current shop scene: `scenes/shop.tscn`
-- Current shop logic: `scripts/shop_game_v2.gd`
+- Main shop scene: `scenes/shop.tscn`
+- Current shop logic: `scripts/shop_game_v3.gd`
 
 ## Run
 
 Open the project with Godot 4.x and run the configured main scene.
 
-If you want to test the shop scene directly, open `scenes/shop.tscn` and run it.
+To test the shop directly, open `scenes/shop.tscn` and run it.
 
 ## Project status
 
-**Prototype / MVP in active development.**
+**Prototype / active development — v0.3**
 
-The priority is to make the basic shop loop fun and understandable before investing heavily in art, monetization or platform-specific integration.
+The current priority is gameplay depth and a fun management loop. Art polish and platform-specific integration will come after the core mechanics are stable.
