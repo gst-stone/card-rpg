@@ -2,6 +2,9 @@
 config/name="My Little Shop"
 run/main_scene="res://scenes/shop.tscn"
 
+[autoload]
+SoundManager="*res://scripts/sound_manager_v1.gd"
+
 [display]
 window/size/viewport_width=960
 window/size/viewport_height=540
