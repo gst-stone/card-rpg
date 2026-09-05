@@ -4,11 +4,27 @@ A lightweight **shop-management / tycoon game** built with Godot 4.x.
 
 The project evolved from a card-RPG prototype into a small management game designed around a simple repeatable loop, procedural visuals, no runtime asset dependency, and future mobile / WeChat mini-game adaptation.
 
-## v1.0 — Final playable milestone ✅
+## v1.1 — Visual polish milestone ✅
 
 **Stock → price → open → serve → earn → settle → upgrade → unlock → repeat.**
 
-v1.0 includes:
+v1.1 includes everything from v1.0 plus:
+
+- Procedural product icons for all 8 products
+- Distinct customer appearances by archetype
+- Animated customer idle movement and patience bars
+- Stronger shop-floor presentation with shelf rows, checkout and entrance
+- Gold pulse feedback after sales and mission rewards
+- Reputation progress bar in the header
+- Market-event banner in the top HUD
+- Clearer active OPEN / CLOSE shop state
+- Improved touch hitboxes for dashboard and missions close buttons
+- Fixed the 960×540 viewport layout so stock cards stay inside the visible screen
+- More compact management HUD for desktop and future mobile adaptation
+
+## v1.0 — Final playable milestone ✅
+
+v1.0 established the complete management loop:
 
 - 8 products with level-based unlocks
 - 4 customer archetypes with different budgets and preferences
@@ -112,11 +128,13 @@ Save/load, daily settlement, floating feedback and touch-friendly controls.
 ### v1.0 — Final playable milestone ✅
 Progression, missions, dashboard, tutorial, bankruptcy handling and a complete repeatable management loop.
 
+### v1.1 — Visual polish milestone ✅
+Procedural product icons, differentiated customers, patience bars, stronger HUD feedback, compact 960×540 layout and corrected touch hitboxes.
+
 ## Next phase
 
-The core gameplay is now intentionally stable. Future work should focus on **content and presentation**, rather than continuously rewriting the core loop:
+The core gameplay and first visual pass are now stable. Future work should focus on **content and presentation**:
 
-- Better shop art and character sprites
 - Sound effects and background music
 - More products and customer behaviors
 - Decorations and store customization
@@ -134,6 +152,7 @@ The core gameplay is now intentionally stable. Future work should focus on **con
 - Current shop logic: `scripts/shop_game_v1.gd`
 - Save file: `user://my_little_shop_v1.json`
 - Runtime dependencies: none
+- Target viewport: **960×540**
 
 ## Run
 
@@ -141,6 +160,6 @@ Open the project with Godot 4.x and run `scenes/shop.tscn`.
 
 ## Status
 
-**v1.0 — playable prototype milestone complete.**
+**v1.1 — playable visual-polish milestone complete.**
 
-The repository now contains a coherent small management game with onboarding, economy, progression, persistence, missions, dashboard statistics and failure/restart handling. The next meaningful step is visual/content production and mobile packaging, not adding more abstract systems.
+The repository now contains a coherent small management game with onboarding, economy, progression, persistence, missions, dashboard statistics, customer visuals, product icons and failure/restart handling. The next meaningful step is content/audio and mobile packaging rather than adding more abstract systems.
