@@ -1,10 +1,10 @@
 extends Node2D
 
-# My Little Shop v1.0 — final playable management prototype.
+# My Little Shop v1.1 — visual polish pass for the management prototype.
 # Keyboard: SPACE open/close, N next day, 1-8 restock, +/- price, U supplier,
 # H staff, E expand, D dashboard, M missions, F5 save, F9 load, F10 reset.
 const SAVE_PATH := "user://my_little_shop_v1.json"
-const VERSION := "1.0.0"
+const VERSION := "1.1.0"
 const PRODUCTS := [
  {"name":"Water","cost":2,"price":4,"unlock":1,"pref":"daily","pop":1.0},
  {"name":"Bread","cost":3,"price":6,"unlock":1,"pref":"daily","pop":0.95},
@@ -71,6 +71,8 @@ var feedback: Array[Dictionary] = []
 var mission_done: Array[bool] = [false,false,false,false]
 var toast := ""
 var toast_time := 0.0
+var visual_time := 0.0
+var gold_pulse := 0.0
 
 func _ready() -> void:
  randomize()
@@ -80,7 +82,9 @@ func _ready() -> void:
  queue_redraw()
 
 func _process(delta: float) -> void:
+ visual_time += delta
  toast_time = max(0.0, toast_time - delta)
+ gold_pulse = max(0.0, gold_pulse - delta * 2.5)
  for f in feedback:
   f.life -= delta
   f.pos.y -= delta * 25.0
@@ -156,6 +160,7 @@ func serve_customer() -> void:
  lifetime_served += 1
  xp += profit
  reputation = min(100, reputation + 1)
+ gold_pulse = 1.0
  add_feedback("+%dg" % sell, Vector2(520,285))
  message = "%s bought %s" % [customer.name, p.name]
  if tutorial_step == 3: tutorial_step = 4
@@ -303,6 +308,7 @@ func check_missions() -> void:
   if done:
    mission_done[i] = true
    gold += int(MISSIONS[i].reward)
+   gold_pulse = 1.0
    show_toast("Mission complete +%dg" % MISSIONS[i].reward)
 
 func mission_progress(i: int) -> int:
@@ -358,10 +364,10 @@ func _input(e: InputEvent) -> void:
    if Rect2(705,455,220,55).has_point(p): next_day()
    return
   if dashboard_visible:
-   if Rect2(705,515,220,45).has_point(p): dashboard_visible = false
+   if Rect2(365,440,220,45).has_point(p): dashboard_visible = false
    return
   if missions_visible:
-   if Rect2(705,515,220,45).has_point(p): missions_visible = false
+   if Rect2(365,465,220,45).has_point(p): missions_visible = false
    return
   if Rect2(705,120,220,50).has_point(p): toggle_shop(); return
   if Rect2(705,180,220,42).has_point(p): next_day(); return
@@ -373,7 +379,7 @@ func _input(e: InputEvent) -> void:
   if Rect2(705,395,220,42).has_point(p): hire_staff(); return
   if Rect2(705,445,220,42).has_point(p): expand_store(); return
   for i in PRODUCTS.size():
-   if Rect2(35+(i%4)*165,385+(i/4)*65,155,55).has_point(p): restock(i); return
+   if Rect2(35+(i%4)*165,380+(i/4)*65,155,55).has_point(p): restock(i); return
  if e is InputEventKey and e.pressed and not e.echo:
   match e.keycode:
    KEY_SPACE: toggle_shop()
@@ -403,54 +409,126 @@ func panel(rect: Rect2, title: String) -> void:
  draw_string(ThemeDB.fallback_font, rect.position + Vector2(16,26), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color("f2f5f7"))
 
 func button(rect: Rect2, text: String, active := false) -> void:
- draw_rect(rect, Color("314457") if active else Color("263442"), true)
- draw_rect(rect, Color("7890a5"), false, 1.0)
- draw_string(ThemeDB.fallback_font, rect.get_center() + Vector2(0,6), text, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 12, 15, Color("ffffff"))
+ var lift := 3.0 if active else 0.0
+ draw_rect(Rect2(rect.position+Vector2(0,lift),rect.size), Color("365b4b") if active else Color("263442"), true)
+ draw_rect(Rect2(rect.position+Vector2(0,lift),rect.size), Color("7890a5"), false, 1.0)
+ draw_string(ThemeDB.fallback_font, rect.get_center()+Vector2(0,6+lift), text, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x-12, 15, Color("ffffff"))
+
+func draw_product_icon(center: Vector2, index: int, scale := 1.0) -> void:
+ var s := 18.0 * scale
+ match index:
+  0:
+   draw_rect(Rect2(center+Vector2(-s*0.35,-s),Vector2(s*0.7,s*1.65)),Color("7db7d7"),true)
+   draw_circle(center+Vector2(0,-s),s*0.35,Color("d7edf8"))
+  1:
+   draw_circle(center, s*0.85, Color("c9965b"))
+   draw_line(center+Vector2(-s*0.5,0),center+Vector2(s*0.5,0),Color("8b623c"),2.0)
+  2:
+   draw_circle(center,s*0.85,Color("c95e58"))
+   draw_circle(center+Vector2(5,-8)*scale,s*0.28,Color("5d9b5f"))
+  3:
+   draw_rect(Rect2(center+Vector2(-s*0.65,-s),Vector2(s*1.3,s*1.9)),Color("5e9ac1"),true)
+   draw_rect(Rect2(center+Vector2(-s*0.45,-s*0.75),Vector2(s*0.9,s*0.25)),Color("e4f0f5"),true)
+  4:
+   draw_rect(Rect2(center+Vector2(-s*0.9,-s*0.35),Vector2(s*1.8,s*0.9)),Color("d2a05c"),true)
+   draw_line(center+Vector2(-s*0.55,-s*0.15),center+Vector2(s*0.55,-s*0.15),Color("8b633c"),2.0)
+  5:
+   draw_circle(center,s*0.9,Color("f0e0b4"))
+   draw_arc(center,s*0.65,0,TAU,24,Color("c9aa72"),2.0)
+  6:
+   draw_circle(center,s*0.8,Color("d8a15e"))
+   draw_circle(center+Vector2(-5,-4)*scale,s*0.12,Color("8d633b"))
+   draw_circle(center+Vector2(5,4)*scale,s*0.12,Color("8d633b"))
+  7:
+   draw_circle(center,s*0.95,Color("b56c5c"))
+   draw_arc(center,s*0.55,0,TAU,20,Color("e8c08b"),3.0)
+
+func draw_customer(c: Dictionary) -> void:
+ var pos: Vector2 = c.pos
+ var pulse := sin(visual_time*3.0+float(c.slot))*1.2
+ var body_color := Color("4e789f")
+ var head_color := Color("d9a27e")
+ match str(c.icon):
+  "P": body_color = Color("8a607e"); head_color = Color("e0aa87")
+  "S": body_color = Color("6d8b62"); head_color = Color("d39b76")
+  "N": body_color = Color("8b7555"); head_color = Color("dda982")
+ draw_circle(pos+Vector2(0,pulse),20,Color("111922"))
+ draw_circle(pos+Vector2(0,-5+pulse),11,head_color)
+ draw_rect(Rect2(pos+Vector2(-12,7+pulse),Vector2(24,18)),body_color,true)
+ draw_circle(pos+Vector2(-4,-7+pulse),1.5,Color("26313a"))
+ draw_circle(pos+Vector2(4,-7+pulse),1.5,Color("26313a"))
+ draw_string(ThemeDB.fallback_font,pos+Vector2(-25,40),str(c.name),HORIZONTAL_ALIGNMENT_CENTER,50,11,Color("c6d2db"))
+ var patience := clamp(float(c.patience)/10.0,0.0,1.0)
+ draw_rect(Rect2(pos+Vector2(-18,46),Vector2(36,4)),Color("303b45"),true)
+ draw_rect(Rect2(pos+Vector2(-18,46),Vector2(36*patience,4)),Color("8bcf9a") if patience>0.35 else Color("d98a7e"),true)
 
 func _draw() -> void:
- draw_rect(Rect2(0,0,960,600), Color("0d131a"), true)
+ draw_rect(Rect2(0,0,960,540), Color("0d131a"), true)
  draw_rect(Rect2(0,0,960,72), Color("17222d"), true)
  draw_string(ThemeDB.fallback_font, Vector2(28,34), "MY LITTLE SHOP", HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color("ffffff"))
- draw_string(ThemeDB.fallback_font, Vector2(28,58), "Day %d  •  Level %d  •  %s" % [day,level,event_text], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("aebdca"))
- draw_string(ThemeDB.fallback_font, Vector2(690,32), "%dg" % gold, HORIZONTAL_ALIGNMENT_RIGHT, 235, 24, Color("f5d77a"))
+ draw_string(ThemeDB.fallback_font, Vector2(28,58), "Day %d  •  Level %d" % [day,level], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("aebdca"))
+ var event_box := Rect2(205,18,230,36)
+ draw_rect(event_box,Color("223442"),true)
+ draw_string(ThemeDB.fallback_font,event_box.get_center()+Vector2(0,5),event_text,HORIZONTAL_ALIGNMENT_CENTER,210,13,Color("d8e5ec"))
+ draw_string(ThemeDB.fallback_font, Vector2(690,32), "%dg" % gold, HORIZONTAL_ALIGNMENT_RIGHT, 235, 24+gold_pulse*3.0, Color("f5d77a"))
  draw_string(ThemeDB.fallback_font, Vector2(690,55), "Rep %d   XP %d/%d" % [reputation,xp,level*45], HORIZONTAL_ALIGNMENT_RIGHT, 235, 14, Color("b9c7d2"))
+ draw_rect(Rect2(690,63,235,4),Color("293743"),true)
+ draw_rect(Rect2(690,63,235*float(reputation)/100.0,4),Color("79b891"),true)
  panel(Rect2(25,90,650,255), "SHOP FLOOR")
- draw_string(ThemeDB.fallback_font, Vector2(42,120), "Queue: %d/%d    Served today: %d    Lost: %d" % [waiting.size(),min(12,4+level+staff),served,lost], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("d6e0e7"))
- for i in waiting.size():
-  var c: Dictionary = waiting[i]
-  var pos: Vector2 = c.pos
-  draw_circle(pos,22,Color("536d80"))
-  draw_string(ThemeDB.fallback_font,pos+Vector2(-6,6),str(c.icon),HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("ffffff"))
-  draw_string(ThemeDB.fallback_font,pos+Vector2(-25,39),str(c.name),HORIZONTAL_ALIGNMENT_CENTER,50,11,Color("c6d2db"))
- draw_string(ThemeDB.fallback_font,Vector2(45,330),message,HORIZONTAL_ALIGNMENT_LEFT,620,14,Color("9fb1bf"))
+ draw_string(ThemeDB.fallback_font, Vector2(42,120), "Queue: %d/%d    Served: %d    Lost: %d" % [waiting.size(),min(12,4+level+staff),served,lost], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("d6e0e7"))
+ draw_rect(Rect2(42,135,615,185),Color("121b23"),true)
+ for x in range(60,650,45): draw_line(Vector2(x,135),Vector2(x,320),Color("1a2731"),1.0)
+ for y in range(150,321,35): draw_line(Vector2(42,y),Vector2(657,y),Color("1a2731"),1.0)
+ for s in shelf_count:
+  var sx := 55.0 + float(s%2)*300.0
+  var sy := 145.0 + float(s/2)*52.0
+  draw_rect(Rect2(sx,sy,275,42),Color("344b43"),true)
+  draw_rect(Rect2(sx+5,sy+5,265,32),Color("1d2929"),true)
+  var a := (s*2)%PRODUCTS.size()
+  draw_product_icon(Vector2(sx+24,sy+21),a,0.55)
+  draw_string(ThemeDB.fallback_font,Vector2(sx+42,sy+26),PRODUCTS[a].name+" ×"+str(stock[a]),HORIZONTAL_ALIGNMENT_LEFT,90,11,Color("dbe8e0"))
+  if a+1<PRODUCTS.size():
+   draw_product_icon(Vector2(sx+153,sy+21),a+1,0.55)
+   draw_string(ThemeDB.fallback_font,Vector2(sx+171,sy+26),PRODUCTS[a+1].name+" ×"+str(stock[a+1]),HORIZONTAL_ALIGNMENT_LEFT,90,11,Color("dbe8e0"))
+ draw_rect(Rect2(520,288,130,30),Color("9a7650"),true)
+ draw_string(ThemeDB.fallback_font,Vector2(540,309),"CHECKOUT",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color.WHITE)
+ draw_rect(Rect2(45,302,86,18),Color("537e96"),true)
+ draw_string(ThemeDB.fallback_font,Vector2(54,315),"ENTRANCE",HORIZONTAL_ALIGNMENT_LEFT,-1,9,Color.WHITE)
+ for c in waiting: draw_customer(c)
+ draw_string(ThemeDB.fallback_font,Vector2(45,335),message,HORIZONTAL_ALIGNMENT_LEFT,620,13,Color("9fb1bf"))
  panel(Rect2(690,90,245,425), "MANAGEMENT")
  button(Rect2(705,120,220,50), "CLOSE SHOP" if open else "OPEN SHOP", open)
  button(Rect2(705,180,220,42), "FINISH / NEXT DAY")
  button(Rect2(705,230,105,42), "DASHBOARD")
  button(Rect2(815,230,110,42), "MISSIONS")
+ draw_string(ThemeDB.fallback_font,Vector2(705,288),"Price %d%%" % int(price_factor*100.0),HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("526170"))
  button(Rect2(705,295,100,42), "PRICE -5%")
  button(Rect2(815,295,110,42), "PRICE +5%")
  button(Rect2(705,345,220,42), "SUPPLIER: %s" % SUPPLIERS[supplier].name)
  button(Rect2(705,395,220,42), "HIRE STAFF (%dg)" % (80+staff*60))
  button(Rect2(705,445,220,42), "EXPAND (%dg)" % (level*100))
  draw_string(ThemeDB.fallback_font,Vector2(705,505),"Stock %d/%d   Staff %d" % [stock_total(),shelf_limit,staff],HORIZONTAL_ALIGNMENT_LEFT,220,13,Color("aebdca"))
- panel(Rect2(25,350,650,225), "STOCK • click to buy 5")
+ panel(Rect2(25,350,650,185), "STOCK • click to buy 5")
  for i in PRODUCTS.size():
   var p: Dictionary = PRODUCTS[i]
-  var r := Rect2(35+(i%4)*165,385+(i/4)*65,155,55)
+  var r := Rect2(35+(i%4)*165,380+(i/4)*65,155,55)
   var unlocked := int(p.unlock) <= level
   draw_rect(r,Color("263b31") if unlocked else Color("20272e"),true)
   draw_rect(r,Color("5f7869") if unlocked else Color("3c4650"),false,1.0)
-  draw_string(ThemeDB.fallback_font,r.position+Vector2(9,20),p.name,HORIZONTAL_ALIGNMENT_LEFT,90,14,Color("ffffff") if unlocked else Color("74808a"))
   if unlocked:
+   draw_product_icon(r.position+Vector2(18,18),i,0.45)
+   draw_string(ThemeDB.fallback_font,r.position+Vector2(36,20),p.name,HORIZONTAL_ALIGNMENT_LEFT,105,13,Color("ffffff"))
    var unit := int(round(float(p.cost)*float(SUPPLIERS[supplier].discount)))
-   draw_string(ThemeDB.fallback_font,r.position+Vector2(9,40),"%dg → %dg   ×%d" % [unit,int(round(float(p.price)*price_factor)),stock[i]],HORIZONTAL_ALIGNMENT_LEFT,145,12,Color("b9c7d2"))
+   draw_string(ThemeDB.fallback_font,r.position+Vector2(9,42),"%dg → %dg   ×%d" % [unit,int(round(float(p.price)*price_factor)),stock[i]],HORIZONTAL_ALIGNMENT_LEFT,145,11,Color("b9c7d2"))
   else:
-   draw_string(ThemeDB.fallback_font,r.position+Vector2(9,40),"LOCK LV.%d" % p.unlock,HORIZONTAL_ALIGNMENT_LEFT,145,12,Color("7d8993"))
+   draw_product_icon(r.position+Vector2(18,18),i,0.45)
+   draw_string(ThemeDB.fallback_font,r.position+Vector2(36,20),p.name,HORIZONTAL_ALIGNMENT_LEFT,105,13,Color("74808a"))
+   draw_string(ThemeDB.fallback_font,r.position+Vector2(9,42),"LOCK LV.%d" % p.unlock,HORIZONTAL_ALIGNMENT_LEFT,145,11,Color("7d8993"))
  for f in feedback:
   draw_string(ThemeDB.fallback_font,f.pos,f.text,HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("f5d77a"))
  if toast_time > 0.0:
   draw_rect(Rect2(250,75,460,38),Color("263442"),true)
+  draw_rect(Rect2(250,75,460,38),Color("7890a5"),false,1.0)
   draw_string(ThemeDB.fallback_font,Vector2(265,100),toast,HORIZONTAL_ALIGNMENT_CENTER,430,15,Color("ffffff"))
  if tutorial_step > 0 and not dashboard_visible and not missions_visible and not settlement_visible:
   draw_rect(Rect2(110,210,500,120),Color("101820"),true)
@@ -463,34 +541,34 @@ func _draw() -> void:
    4: t = "4/4  FINISH THE DAY\nClose the shop and press FINISH / NEXT DAY."
   draw_multiline_string(ThemeDB.fallback_font,Vector2(135,245),t,HORIZONTAL_ALIGNMENT_LEFT,450,17,23,Color("ffffff"))
  if settlement_visible:
-  panel(Rect2(170,145,620,355),"DAY %d SETTLEMENT" % day)
+  panel(Rect2(170,95,620,400),"DAY %d SETTLEMENT" % day)
   var profit := revenue-cost_today
-  draw_string(ThemeDB.fallback_font,Vector2(210,220),"Revenue",HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b9c7d2"))
-  draw_string(ThemeDB.fallback_font,Vector2(560,220),"%dg" % revenue,HORIZONTAL_ALIGNMENT_RIGHT,160,22,Color("f5d77a"))
-  draw_string(ThemeDB.fallback_font,Vector2(210,260),"Operating cost",HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b9c7d2"))
-  draw_string(ThemeDB.fallback_font,Vector2(560,260),"-%dg" % cost_today,HORIZONTAL_ALIGNMENT_RIGHT,160,22,Color("e8a5a5"))
-  draw_string(ThemeDB.fallback_font,Vector2(210,305),"Day profit",HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color("ffffff"))
-  draw_string(ThemeDB.fallback_font,Vector2(560,305),"%dg" % profit,HORIZONTAL_ALIGNMENT_RIGHT,160,24,Color("9fe0a8") if profit >= 0 else Color("e8a5a5"))
-  draw_string(ThemeDB.fallback_font,Vector2(210,345),"Served %d   Lost %d   Reputation %d" % [served,lost,reputation],HORIZONTAL_ALIGNMENT_LEFT,400,15,Color("b9c7d2"))
+  draw_string(ThemeDB.fallback_font,Vector2(210,170),"Revenue",HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b9c7d2"))
+  draw_string(ThemeDB.fallback_font,Vector2(560,170),"%dg" % revenue,HORIZONTAL_ALIGNMENT_RIGHT,160,22,Color("f5d77a"))
+  draw_string(ThemeDB.fallback_font,Vector2(210,210),"Operating cost",HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color("b9c7d2"))
+  draw_string(ThemeDB.fallback_font,Vector2(560,210),"-%dg" % cost_today,HORIZONTAL_ALIGNMENT_RIGHT,160,22,Color("e8a5a5"))
+  draw_string(ThemeDB.fallback_font,Vector2(210,255),"Day profit",HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color("ffffff"))
+  draw_string(ThemeDB.fallback_font,Vector2(560,255),"%dg" % profit,HORIZONTAL_ALIGNMENT_RIGHT,160,24,Color("9fe0a8") if profit >= 0 else Color("e8a5a5"))
+  draw_string(ThemeDB.fallback_font,Vector2(210,295),"Served %d   Lost %d   Reputation %d" % [served,lost,reputation],HORIZONTAL_ALIGNMENT_LEFT,400,15,Color("b9c7d2"))
   button(Rect2(705,455,220,55),"START NEXT DAY")
  if dashboard_visible:
-  panel(Rect2(155,115,650,420),"BUSINESS DASHBOARD")
+  panel(Rect2(155,95,650,390),"BUSINESS DASHBOARD")
   var rows := ["Lifetime revenue: %dg" % lifetime_revenue,"Customers served: %d" % lifetime_served,"Days completed: %d" % lifetime_days,"Best day revenue: %dg" % best_day_revenue,"Current reputation: %d/100" % reputation,"Store capacity: %d" % shelf_limit,"Current demand: %d%%" % int(demand*100.0),"Price level: %d%%" % int(price_factor*100.0)]
   for i in rows.size():
-   draw_string(ThemeDB.fallback_font,Vector2(200,175+i*38),rows[i],HORIZONTAL_ALIGNMENT_LEFT,520,18,Color("d6e0e7"))
-  button(Rect2(365,515,220,45),"CLOSE DASHBOARD")
+   draw_string(ThemeDB.fallback_font,Vector2(200,150+i*34),rows[i],HORIZONTAL_ALIGNMENT_LEFT,520,17,Color("d6e0e7"))
+  button(Rect2(365,440,220,45),"CLOSE DASHBOARD")
  if missions_visible:
-  panel(Rect2(135,105,690,440),"MISSIONS & REWARDS")
+  panel(Rect2(135,80,690,435),"MISSIONS & REWARDS")
   for i in MISSIONS.size():
    var m: Dictionary = MISSIONS[i]
-   var y := 165+i*78
+   var y := 140+i*75
    var progress := min(mission_progress(i),int(m.target))
    draw_string(ThemeDB.fallback_font,Vector2(175,y),("✓ " if mission_done[i] else "○ ")+str(m.name),HORIZONTAL_ALIGNMENT_LEFT,210,18,Color("9fe0a8") if mission_done[i] else Color("ffffff"))
    draw_string(ThemeDB.fallback_font,Vector2(395,y),"%d/%d" % [progress,m.target],HORIZONTAL_ALIGNMENT_LEFT,100,16,Color("d6e0e7"))
    draw_string(ThemeDB.fallback_font,Vector2(175,y+27),"%s   Reward %dg" % [m.text,m.reward],HORIZONTAL_ALIGNMENT_LEFT,500,13,Color("aebdca"))
-  button(Rect2(365,515,220,45),"CLOSE MISSIONS")
+  button(Rect2(365,465,220,45),"CLOSE MISSIONS")
  if bankrupt:
-  panel(Rect2(180,170,600,300),"SHOP CLOSED")
-  draw_string(ThemeDB.fallback_font,Vector2(225,255),"You ran out of cash.",HORIZONTAL_ALIGNMENT_LEFT,510,28,Color("e8a5a5"))
-  draw_multiline_string(ThemeDB.fallback_font,Vector2(225,295),"Try lower prices, wholesale supplies, and avoid\nexpanding or hiring before the shop is profitable.",HORIZONTAL_ALIGNMENT_LEFT,510,16,24,Color("c6d2db"))
+  panel(Rect2(180,120,600,300),"SHOP CLOSED")
+  draw_string(ThemeDB.fallback_font,Vector2(225,205),"You ran out of cash.",HORIZONTAL_ALIGNMENT_LEFT,510,28,Color("e8a5a5"))
+  draw_multiline_string(ThemeDB.fallback_font,Vector2(225,245),"Try lower prices, wholesale supplies, and avoid\nexpanding or hiring before the shop is profitable.",HORIZONTAL_ALIGNMENT_LEFT,510,16,24,Color("c6d2db"))
   button(Rect2(705,455,220,55),"RESTART GAME")
