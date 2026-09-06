@@ -5,14 +5,18 @@ const ENEMIES := {
 	"Cultist": {"hp":45,"damage":7,"intent":"Attack"},
 	"Wolf": {"hp":55,"damage":10,"intent":"Attack"},
 	"Golem": {"hp":80,"damage":6,"intent":"Heavy Attack"},
-	"Elite Knight": {"hp":120,"damage":14,"intent":"Elite Attack"},
 	"Plague Witch": {"hp":68,"damage":9,"intent":"Poison"},
 	"Blood Hound": {"hp":72,"damage":11,"intent":"Heavy Attack"},
-	"Stone Warden": {"hp":105,"damage":8,"intent":"Guard"}
+	"Stone Warden": {"hp":105,"damage":8,"intent":"Guard"},
+	"Void Archer": {"hp":62,"damage":12,"intent":"Attack"},
+	"Frost Mage": {"hp":70,"damage":9,"intent":"Weakening Chant"},
+	"Iron Brute": {"hp":92,"damage":8,"intent":"Heavy Attack"},
+	"Soul Eater": {"hp":88,"damage":10,"intent":"Poison"},
+	"Elite Knight": {"hp":120,"damage":14,"intent":"Elite Attack"}
 }
 
 static func create_enemy(floor: int, elite: bool = false) -> Dictionary:
-	var names := ["Cultist","Wolf","Golem","Plague Witch","Blood Hound","Stone Warden"]
+	var names := ["Cultist","Wolf","Golem","Plague Witch","Blood Hound","Stone Warden","Void Archer","Frost Mage","Iron Brute","Soul Eater"]
 	var name: String = "Elite Knight" if elite else names[(floor - 1) % names.size()]
 	var base: Dictionary = ENEMIES[name]
 	var scale := max(0, floor - 1)
@@ -26,10 +30,14 @@ static func next_intent(enemy: Dictionary, turn: int) -> String:
 		"Cultist": return ["Attack", "Attack", "Weakening Chant"][max(0, turn - 1) % 3]
 		"Wolf": return ["Attack", "Heavy Attack"][max(0, turn - 1) % 2]
 		"Golem": return ["Heavy Attack", "Guard", "Attack"][max(0, turn - 1) % 3]
-		"Elite Knight": return ["Heavy Attack", "Attack", "Weakening Strike"][max(0, turn - 1) % 3]
+		"Elite Knight": return ["Heavy Attack", "Attack", "Weakening Strike", "Heavy Attack"][max(0, turn - 1) % 4]
 		"Plague Witch": return ["Poison", "Poison", "Attack", "Weakening Chant"][max(0, turn - 1) % 4]
 		"Blood Hound": return ["Heavy Attack", "Attack", "Attack"][max(0, turn - 1) % 3]
 		"Stone Warden": return ["Guard", "Heavy Attack", "Attack"][max(0, turn - 1) % 3]
+		"Void Archer": return ["Attack", "Attack", "Weakening Chant", "Heavy Attack"][max(0, turn - 1) % 4]
+		"Frost Mage": return ["Weakening Chant", "Attack", "Weakening Chant", "Heavy Attack"][max(0, turn - 1) % 4]
+		"Iron Brute": return ["Guard", "Heavy Attack", "Heavy Attack", "Attack"][max(0, turn - 1) % 4]
+		"Soul Eater": return ["Poison", "Attack", "Heavy Attack", "Poison"][max(0, turn - 1) % 4]
 	return "Attack"
 
 static func intent_damage(enemy: Dictionary, turn: int) -> int:
@@ -37,6 +45,7 @@ static func intent_damage(enemy: Dictionary, turn: int) -> int:
 	var intent := next_intent(enemy, turn)
 	if intent == "Heavy Attack": return base + 8
 	if intent == "Weakening Chant": return 0
+	if intent == "Weakening Strike": return base + 2
 	if intent == "Guard": return 0
 	if intent == "Poison": return base - 2
 	return base
