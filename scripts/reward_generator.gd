@@ -1,12 +1,11 @@
 class_name RewardGenerator
 extends RefCounted
 
-const CARD_POOL := ["Slash", "Ice Lance", "Blood Pact", "Fireball", "Heavy Blow", "Guard", "Focus", "Expose", "Hex", "Toxic Flask", "Quick Jab", "Fortify", "Poison Dart", "Cleave", "Siphon", "Adrenaline", "Shatter", "Riposte"]
+const CARD_POOL := ["Slash", "Ice Lance", "Blood Pact", "Fireball", "Heavy Blow", "Guard", "Focus", "Expose", "Hex", "Toxic Flask", "Quick Jab", "Fortify", "Poison Dart", "Cleave", "Siphon", "Adrenaline", "Shatter", "Riposte", "Rage", "Barrier", "Chain Lightning", "Weakening Dart"]
 
 static func card_choices(floor: int) -> Array:
 	var pool := CARD_POOL.duplicate()
 	var rng := RandomNumberGenerator.new()
-	# Deterministic by floor: loading the same run does not silently reroll rewards.
 	rng.seed = 104729 + floor * 7919
 	pool.shuffle()
 	return pool.slice(0, min(3, pool.size()))
